@@ -138,7 +138,7 @@ int SMIOL_inquire(void)
  * Detailed description.
  *
  ********************************************************************************/
-int SMIOL_open_file(void)
+int SMIOL_open_file(struct SMIOL_context *context, const char *filename,struct SMIOL_file **file)
 {
 	return SMIOL_SUCCESS;
 }
@@ -153,7 +153,7 @@ int SMIOL_open_file(void)
  * Detailed description.
  *
  ********************************************************************************/
-int SMIOL_close_file(void)
+int SMIOL_close_file(struct SMIOL_file **file)
 {
 	return SMIOL_SUCCESS;
 }

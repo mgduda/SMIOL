@@ -192,11 +192,15 @@ contains
     !>  Detailed description of what this routine does.
     !
     !-----------------------------------------------------------------------
-    integer function SMIOLf_open_file() result(ierr)
+    integer function SMIOLf_open_file(context, filename, file) result(ierr)
 
         implicit none
 
-        ierr = 0
+        type (SMIOLf_context), pointer :: context
+        character(len=*), intent(in) :: filename
+        type (SMIOLf_file), pointer :: file
+
+        ierr = SMIOL_SUCCESS
 
     end function SMIOLf_open_file
 
@@ -209,14 +213,15 @@ contains
     !>  Detailed description of what this routine does.
     !
     !-----------------------------------------------------------------------
-    integer function SMIOLf_close_file() result(ierr)
+    integer function SMIOLf_close_file(file) result(ierr)
 
         implicit none
 
-        ierr = 0
+        type (SMIOLf_file), pointer :: file
+
+        ierr = SMIOL_SUCCESS
 
     end function SMIOLf_close_file
-
 
 
     !
