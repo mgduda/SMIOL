@@ -1,3 +1,4 @@
+
 default:
 	@echo "Please provide a compiler name (llvm, gnu, intel, pgi, xi, nag)"
 	exit 1
@@ -6,7 +7,6 @@ llvm:
 	( $(MAKE) smiol \
 	 "CC = clang" \
 	 "CFLAGS = -g -Weverything" \
-	 "CPPINCLUDES = " \
 	 "FC = flang" \
 	 "FFLAGS = -g -Mbounds -Mchkptr -Mstandard" \
 	 "FCINCLUDES = " \
@@ -17,7 +17,6 @@ gnu:
 	( $(MAKE) smiol \
 	 "CC = gcc" \
 	 "CFLAGS = -g -Wall -pedantic" \
-	 "CPPINCLUDES = " \
 	 "FC = gfortran"\
 	 "FFLAGS = -g -Wall -fcheck=all -pedantic -std=f2003" \
 	 "FCINCLUDES = " \
@@ -28,7 +27,6 @@ intel:
 	( $(MAKE) smiol \
 	 "CC = icc" \
 	 "CFLAGS = -g -Wall" \
-	 "CPPINCLUDES = " \
 	 "FC = ifort " \
 	 "FFLAGS = -g -warn all -check all" \
 	 "FCINCLUDES = " \
@@ -39,7 +37,6 @@ pgi:
 	( $(MAKE) smiol \
 	 "CC = pgcc" \
 	 "CFLAGS = -g -traceback" \
-	 "CPPINCLUDES = " \
 	 "FC = pgfortran" \
 	 "FFLAGS = -g -Mbounds -Mchkptr -traceback" \
 	 "FCINCLUDES = " \
@@ -50,7 +47,6 @@ xl:
 	( $(MAKE) smiol \
 	 "CC = xlc_r" \
 	 "CFLAGS = -g" \
-	 "CPPINCLUDES = " \
 	 "FC = xlf2003_r" \
 	 "FFLAGS = -g -C" \
 	 "FCINCLUDES = " \
@@ -61,17 +57,23 @@ nag:
 	( $(MAKE) smiol \
 	 "CC = gcc" \
 	 "CFLAGS = -g -Wall -pedantic" \
-	 "CPPINCLUDES = " \
 	 "FC = nagfor" \
 	 "FFLAGS = -f2003 -g -C=all" \
 	 "FCINCLUDES = " \
 	 "CC_PARALLEL = mpicc" \
 	 "FC_PARALLEL = mpifort" )
 
+
+ifneq "$(PNETCDF)" ""
+CPPINCLUDES = -DSMIOL_PNETCDF -I${PNETCDF}/include
+LIBS = -L${PNETCDF}/lib -lpnetcdf
+endif
+
 smiol:
-	$(MAKE) -C ./src CC=$(CC_PARALLEL) FC=$(FC_PARALLEL)
-	$(CC_PARALLEL) -I./src/ $(CPPINCLUDES) $(CFLAGS) -L./ $(LDFLAGS) -o smiol_runner_c smiol_runner.c -lsmiol
-	$(FC_PARALLEL) -I./src/ $(CPPINCLUDES) $(FFLAGS) -L./ $(LDFLAGS) -o smiol_runner_f smiol_runner.F90 -lsmiolf -lsmiol
+
+	$(MAKE) -C ./src CC=$(CC_PARALLEL) FC=$(FC_PARALLEL) CPPINCLUDES="$(CPPINCLUDES)"
+	$(CC_PARALLEL) -I./src/ $(CPPINCLUDES) $(CFLAGS) -L./ $(LDFLAGS) -o smiol_runner_c smiol_runner.c -lsmiol $(LIBS)
+	$(FC_PARALLEL) -I./src/ $(CPPINCLUDES) $(FFLAGS) -L./ $(LDFLAGS) -o smiol_runner_f smiol_runner.F90 -lsmiolf -lsmiol $(LIBS)
 
 
 test:
