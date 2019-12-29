@@ -177,7 +177,7 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct 
 	(*file)->context = context;
 
 #ifdef SMIOL_PNETCDF
-	if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename, NC_NOCLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
+	if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename, (NC_64BIT_DATA | NC_CLOBBER), MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
 		free((*file));
 		(*file) = NULL;
 		return -996;
@@ -243,6 +243,12 @@ int SMIOL_close_file(struct SMIOL_file **file)
  ********************************************************************************/
 int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsize)
 {
+#ifdef SMIOL_PNETCDF
+	int dimidp;
+	int ierr;
+	MPI_Offset len;
+#endif
+
 	/*
 	 * Check that file handle is valid
 	 */
@@ -256,6 +262,29 @@ int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsi
 	if (dimname == NULL) {
 		return -999;    /* Should we define an error code for this? */
 	}
+
+#ifdef SMIOL_PNETCDF
+	/*
+	 * The parallel-netCDF library does not permit zero-length dimensions
+	 */
+	if (dimsize == 0) {
+		return -999;
+	}
+
+	/*
+	 * Handle unlimited / record dimension specifications
+	 */
+	if (dimsize < 0) {
+		len = NC_UNLIMITED;
+	}
+	else {
+		len = (MPI_Offset)dimsize;
+	}
+
+	if ((ierr = ncmpi_def_dim(file->ncidp, dimname, len, &dimidp)) != NC_NOERR) {
+		return -996;
+	}
+#endif
 
 	return SMIOL_SUCCESS;
 }
