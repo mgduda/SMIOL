@@ -257,8 +257,6 @@ int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsi
 		return -999;    /* Should we define an error code for this? */
 	}
 
-	fprintf(stderr, "Defining dimension %s = %li\n", dimname, (long int)dimsize);
-
 	return SMIOL_SUCCESS;
 }
 

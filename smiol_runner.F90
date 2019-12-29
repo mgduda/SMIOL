@@ -44,6 +44,19 @@ program smiol_runner
     end if
 
 
+    !
+    ! Unit tests for dimensions
+    !
+    ierr = test_dimensions()
+    if (ierr == 0) then
+        write(0,*) 'All tests PASSED!'
+        write(0,*) ''
+    else
+        write(0,*) ierr, ' tests FAILED!'
+        write(0,*) ''
+    end if
+
+
     if (SMIOLf_init(MPI_COMM_WORLD, context) /= SMIOL_SUCCESS) then
         write(0,*) "ERROR: 'SMIOLf_init' was not called successfully"
         stop 1
@@ -291,5 +304,101 @@ contains
         write(0,'(a)') ''
 
     end function test_open_close
+
+
+    function test_dimensions() result(ierrcount)
+
+        implicit none
+
+        integer :: ierrcount
+        type (SMIOLf_context), pointer :: context
+        type (SMIOLf_file), pointer :: file
+#if 0
+        type (SMIOLf_file), pointer :: null_file
+#endif
+
+        write(0,'(a)') '********************************************************************************'
+        write(0,'(a)') '************ SMIOL_define_dim unit tests ***************************************'
+        write(0,'(a)') ''
+
+        ierrcount = 0
+
+
+        ! Create a SMIOL context for testing file dimension routines
+        nullify(context)
+        ierr = SMIOLf_init(MPI_COMM_WORLD, context)
+        if (ierr /= SMIOL_SUCCESS .or. .not. associated(context)) then
+            ierrcount = -1
+            return
+        end if
+
+        ! Create a SMIOL file for testing dimension routines
+        nullify(file)
+        ierr = SMIOLf_open_file(context, 'test_dims_fortran.nc', file)
+        if (ierr /= SMIOL_SUCCESS .or. .not. associated(file)) then
+            ierrcount = -1
+            return
+        end if
+
+#if 0
+        ! Handle unassociated file handle
+        write(0,'(a)',advance='no') 'Handle unassociated file handle (SMIOLf_define_dim): '
+        nullify(null_file)
+        ierr = SMIOLf_define_dim(null_file, 'invalid_dim', 42_SMIOL_offset_kind)
+        if (ierr /= SMIOL_SUCCESS) then
+            write(0,'(a)') 'PASS'
+        else
+            write(0,'(a)') 'FAIL - SMIOL_SUCCESS was returned, when an error was expected'
+            ierrcount = ierrcount + 1
+        end if
+#endif
+
+        ! Everything OK for SMIOL_define_dim, unlimited dimension
+        write(0,'(a)',advance='no') 'Everything OK - unlimited dimension (SMIOLf_define_dim): '
+        ierr = SMIOLf_define_dim(file, 'Time', -1_SMIOL_offset_kind)
+        if (ierr == SMIOL_SUCCESS) then
+            write(0,'(a)') 'PASS'
+        else
+            write(0,'(a)') 'FAIL - SMIOL_SUCCESS was not returned'
+            ierrcount = ierrcount + 1
+        end if
+
+        ! Everything OK for SMIOL_define_dim, small non-record dimension
+        write(0,'(a)',advance='no') 'Everything OK - small non-record dimension (SMIOLf_define_dim): '
+        ierr = SMIOLf_define_dim(file, 'nCells', 40962_SMIOL_offset_kind)
+        if (ierr == SMIOL_SUCCESS) then
+            write(0,'(a)') 'PASS'
+        else
+            write(0,'(a)') 'FAIL - SMIOL_SUCCESS was not returned'
+            ierrcount = ierrcount + 1
+        end if
+
+        ! Everything OK for SMIOL_define_dim, large non-record dimension
+        write(0,'(a)',advance='no') 'Everything OK - large non-record dimension (SMIOLf_define_dim): '
+        ierr = SMIOLf_define_dim(file, 'nElements', 99999999999_SMIOL_offset_kind)
+        if (ierr == SMIOL_SUCCESS) then
+            write(0,'(a)') 'PASS'
+        else
+            write(0,'(a)') 'FAIL - SMIOL_SUCCESS was not returned'
+            ierrcount = ierrcount + 1
+        end if
+
+        ! Close the SMIOL file
+        ierr = SMIOLf_close_file(file)
+        if (ierr /= SMIOL_SUCCESS .or. associated(file)) then
+            ierrcount = -1
+            return
+        end if
+
+        ! Free the SMIOL context
+        ierr = SMIOLf_finalize(context)
+        if (ierr /= SMIOL_SUCCESS .or. associated(context)) then
+            ierrcount = -1
+            return
+        end if
+
+        write(0,'(a)') ''
+
+    end function test_dimensions
 
 end program smiol_runner
