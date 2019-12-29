@@ -5,12 +5,14 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module SMIOLf
 
-    use iso_c_binding, only : c_int, c_ptr
+    use iso_c_binding, only : c_int, c_int64_t, c_ptr
 
     private
 
     public :: SMIOLf_context, &
               SMIOLf_file
+
+    public :: SMIOL_offset_kind
 
     public :: SMIOLf_init, &
               SMIOLf_finalize, &
@@ -30,6 +32,9 @@ module SMIOLf
               SMIOLf_set_option, &
               SMIOLf_create_decomp, &
               SMIOLf_free_decomp
+
+
+    integer, parameter :: SMIOL_offset_kind = c_int64_t
 
 
     type, bind(C) :: SMIOLf_context
@@ -322,14 +327,55 @@ contains
     !
     !> \brief Defines a new dimension in a file
     !> \details
-    !>  Detailed description of what this routine does.
+    !>  Defines a dimension with the specified name and size in the file associated
+    !>  with the file handle. If a negative value is provided for the size argument,
+    !>  the dimension will be defined as an unlimited or record dimension.
+    !>
+    !>  Upon successful completion, SMIOL_SUCCESS is returned; otherwise, an error
+    !>  code is returned.
     !
     !-----------------------------------------------------------------------
-    integer function SMIOLf_define_dim() result(ierr)
+    integer function SMIOLf_define_dim(file, dimname, dimsize) result(ierr)
+
+        use iso_c_binding, only : c_char, c_null_char, c_loc, c_ptr, c_null_ptr, c_associated
 
         implicit none
 
-        ierr = 0
+        type (SMIOLf_file), target :: file
+        character(len=*), intent(in) :: dimname
+        integer(kind=SMIOL_offset_kind), intent(in) :: dimsize
+
+        type (c_ptr) :: c_file = c_null_ptr
+        character(kind=c_char), dimension(:), pointer :: c_dimname => null()
+
+        integer :: i
+
+        ! C interface definitions
+        interface
+            function SMIOL_define_dim(file, dimname, dimsize) result(ierr) bind(C, name='SMIOL_define_dim')
+                use iso_c_binding, only : c_ptr, c_char, c_int64_t, c_int
+                type (c_ptr), value :: file
+                character(kind=c_char), dimension(*) :: dimname
+                integer(kind=c_int64_t), value :: dimsize
+                integer(kind=c_int) :: ierr
+            end function
+        end interface
+
+        ! TODO: If the actual argument for file is an unassociated pointer, how will this work?
+        c_file = c_loc(file)
+
+        !
+        ! Convert Fortran string to C character array
+        !
+        allocate(c_dimname(len_trim(dimname) + 1))
+        do i=1,len_trim(dimname)
+            c_dimname(i) = dimname(i:i)
+        end do
+        c_dimname(i) = c_null_char
+
+        ierr = SMIOL_define_dim(c_file, c_dimname, dimsize)
+
+        deallocate(c_dimname)
 
     end function SMIOLf_define_dim
 
