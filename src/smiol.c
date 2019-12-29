@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include "smiol.h"
 
+#ifdef SMIOL_PNETCDF
+#include "pnetcdf.h"
+#endif
+
 
 /********************************************************************************
  *
@@ -145,6 +149,8 @@ int SMIOL_inquire(void)
  ********************************************************************************/
 int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct SMIOL_file **file)
 {
+	int ierr;
+
 	/*
 	 * Before dereferencing file below, ensure that the pointer
 	 * the file pointer is not NULL
@@ -170,6 +176,14 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct 
 	 */
 	(*file)->context = context;
 
+#ifdef SMIOL_PNETCDF
+	if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename, NC_NOCLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
+		free((*file));
+		(*file) = NULL;
+		return -996;
+	}
+#endif
+
 	return SMIOL_SUCCESS;
 }
 
@@ -188,6 +202,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct 
  ********************************************************************************/
 int SMIOL_close_file(struct SMIOL_file **file)
 {
+	int ierr;
+
 	/*
 	 * If the pointer to the file pointer is NULL, assume we have nothing
 	 * to do and declare success
@@ -195,6 +211,14 @@ int SMIOL_close_file(struct SMIOL_file **file)
 	if (file == NULL) {
 		return SMIOL_SUCCESS;
 	}
+
+#ifdef SMIOL_PNETCDF
+	if ((ierr = ncmpi_close((*file)->ncidp)) != NC_NOERR) {
+		free((*file));
+		(*file) = NULL;
+		return -996;
+	}
+#endif
 
 	free((*file));
 	(*file) = NULL;
