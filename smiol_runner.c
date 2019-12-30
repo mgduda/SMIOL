@@ -503,11 +503,12 @@ int test_dimensions(void)
 	dimsize = (int64_t)0;
 	ierr = SMIOL_inquire_dim(file, "Time", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
-		if (dimsize == 1) {
+		if (dimsize == (long int)0) {
 			fprintf(stderr, "PASS\n");
 		}
 		else {
-			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong (got %li, expected %li)\n",
+				(long int)dimsize, (long int)0);
 			errcount++;
 		}
 	}
@@ -521,11 +522,12 @@ int test_dimensions(void)
 	dimsize = (int64_t)0;
 	ierr = SMIOL_inquire_dim(file, "nCells", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
-		if (dimsize == 1) {
+		if (dimsize == (long int)40962) {
 			fprintf(stderr, "PASS\n");
 		}
 		else {
-			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong (got %li, expected %li)\n",
+				(long int)dimsize, (long int)40962);
 			errcount++;
 		}
 	}
@@ -539,11 +541,12 @@ int test_dimensions(void)
 	dimsize = (int64_t)0;
 	ierr = SMIOL_inquire_dim(file, "nElements", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
-		if (dimsize == 1) {
+		if (dimsize == (long int)99999999999) {
 			fprintf(stderr, "PASS\n");
 		}
 		else {
-			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong (got %li, expected %li)\n",
+				(long int)dimsize, (long int)99999999999);
 			errcount++;
 		}
 	}

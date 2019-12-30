@@ -307,6 +307,11 @@ int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsi
  ********************************************************************************/
 int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, int64_t *dimsize)
 {
+#ifdef SMIOL_PNETCDF
+	int dimidp;
+	int ierr;
+	MPI_Offset len;
+#endif
 	/*
 	 * Check that file handle is valid
 	 */
@@ -328,7 +333,19 @@ int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, int64_t *dim
 		return -999;    /* Should we define an error code for this? */
 	}
 
-	(*dimsize) = 1;
+#ifdef SMIOL_PNETCDF
+	if ((ierr = ncmpi_inq_dimid(file->ncidp, dimname, &dimidp)) != NC_NOERR) {
+		(*dimsize) = -1;  /* TODO: should there be a well-defined invalid size? */
+		return -996;
+	}
+
+	if ((ierr = ncmpi_inq_dimlen(file->ncidp, dimidp, &len)) != NC_NOERR) {
+		(*dimsize) = -1;  /* TODO: should there be a well-defined invalid size? */
+		return -996;
+	}
+
+	(*dimsize) = (int64_t)len;
+#endif
 
 	return SMIOL_SUCCESS;
 }

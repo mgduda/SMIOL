@@ -403,10 +403,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'Time', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 0_SMIOL_offset_kind) then
                 write(0,'(a)') 'PASS'
             else
-                write(0,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(0,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 0_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
@@ -419,10 +420,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'nCells', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 40962_SMIOL_offset_kind) then
                 write(0,'(a)') 'PASS'
             else
-                write(0,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(0,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 40962_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
@@ -435,10 +437,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'nElements', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 99999999999_SMIOL_offset_kind) then
                 write(0,'(a)') 'PASS'
             else
-                write(0,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(0,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 99999999999_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
