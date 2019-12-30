@@ -371,11 +371,12 @@ int test_dimensions(void)
 {
 	int ierr;
 	int errcount;
+	int64_t dimsize;
 	struct SMIOL_context *context;
 	struct SMIOL_file *file;
 
 	fprintf(stderr, "********************************************************************************\n");
-	fprintf(stderr, "************ SMIOL_define_dim **************************************************\n");
+	fprintf(stderr, "************ SMIOL_define_dim / SMIOL_inquire_dim ******************************\n");
 	fprintf(stderr, "\n");
 
 	errcount = 0;
@@ -445,6 +446,106 @@ int test_dimensions(void)
 	ierr = SMIOL_define_dim(file, "nElements", 99999999999);
 	if (ierr == SMIOL_SUCCESS) {
 		fprintf(stderr, "PASS\n");
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was not returned\n");
+		errcount++;
+	}
+
+	/* Handle NULL file handle */
+	fprintf(stderr, "Handle NULL file handle (SMIOLf_inquire_dim): ");
+	ierr = SMIOL_inquire_dim(NULL, "invalid_dim", &dimsize);
+	if (ierr != SMIOL_SUCCESS) {
+		fprintf(stderr, "PASS\n");
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, when an error was expected\n");
+		errcount++;
+	}
+
+	/* Handle NULL dimension name */
+	fprintf(stderr, "Handle NULL dimension name (SMIOLf_inquire_dim): ");
+	ierr = SMIOL_inquire_dim(file, NULL, &dimsize);
+	if (ierr != SMIOL_SUCCESS) {
+		fprintf(stderr, "PASS\n");
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, when an error was expected\n");
+		errcount++;
+	}
+
+	/* Handle NULL dimension size */
+	fprintf(stderr, "Handle NULL dimension size (SMIOLf_inquire_dim): ");
+	ierr = SMIOL_inquire_dim(file, "nCells", NULL);
+	if (ierr != SMIOL_SUCCESS) {
+		fprintf(stderr, "PASS\n");
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, when an error was expected\n");
+		errcount++;
+	}
+
+#if 0
+	/* Handle undefined dimension */
+	fprintf(stderr, "Handle undefined dimension (SMIOLf_inquire_dim): ");
+	ierr = SMIOL_inquire_dim(file, "foobar", &dimsize);
+	if (ierr != SMIOL_SUCCESS) {
+		fprintf(stderr, "PASS\n");
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, when an error was expected\n");
+		errcount++;
+	}
+#endif
+
+	/* Everything OK for SMIOL_inquire_dim, unlimited dimension */
+	fprintf(stderr, "Everything OK - unlimited dimension (SMIOLf_inquire_dim): ");
+	dimsize = (int64_t)0;
+	ierr = SMIOL_inquire_dim(file, "Time", &dimsize);
+	if (ierr == SMIOL_SUCCESS) {
+		if (dimsize == 1) {
+			fprintf(stderr, "PASS\n");
+		}
+		else {
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			errcount++;
+		}
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was not returned\n");
+		errcount++;
+	}
+
+	/* Everything OK for SMIOL_inquire_dim, small non-record dimension */
+	fprintf(stderr, "Everything OK - small non-record dimension (SMIOLf_inquire_dim): ");
+	dimsize = (int64_t)0;
+	ierr = SMIOL_inquire_dim(file, "nCells", &dimsize);
+	if (ierr == SMIOL_SUCCESS) {
+		if (dimsize == 1) {
+			fprintf(stderr, "PASS\n");
+		}
+		else {
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			errcount++;
+		}
+	}
+	else {
+		fprintf(stderr, "FAIL - SMIOL_SUCCESS was not returned\n");
+		errcount++;
+	}
+
+	/* Everything OK for SMIOL_inquire_dim, large non-record dimension */
+	fprintf(stderr, "Everything OK - large non-record dimension (SMIOLf_inquire_dim): ");
+	dimsize = (int64_t)0;
+	ierr = SMIOL_inquire_dim(file, "nElements", &dimsize);
+	if (ierr == SMIOL_SUCCESS) {
+		if (dimsize == 1) {
+			fprintf(stderr, "PASS\n");
+		}
+		else {
+			fprintf(stderr, "FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong\n");
+			errcount++;
+		}
 	}
 	else {
 		fprintf(stderr, "FAIL - SMIOL_SUCCESS was not returned\n");
