@@ -702,10 +702,10 @@ contains
         ! Handle undefined dimension
         write(test_log,'(a)',advance='no') 'Handle undefined dimension (SMIOLf_inquire_dim): '
         ierr = SMIOLf_inquire_dim(file, 'foobar', dimsize)
-        if (ierr /= SMIOL_SUCCESS) then
-            write(test_log,'(a)') 'PASS'
+        if (ierr == SMIOL_LIBRARY_ERROR) then
+            write(test_log,'(a)') 'PASS ('//trim(SMIOLf_lib_error_string(context))//')'
         else
-            write(test_log,'(a)') 'FAIL - SMIOL_SUCCESS was returned, when an error was expected'
+            write(test_log,'(a)') 'FAIL - SMIOL_LIBRARY_ERROR was not returned'
             ierrcount = ierrcount + 1
         end if
 
@@ -714,10 +714,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'Time', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 0_SMIOL_offset_kind) then
                 write(test_log,'(a)') 'PASS'
             else
-                write(test_log,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(test_log,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 0_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
@@ -730,10 +731,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'nCells', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 40962_SMIOL_offset_kind) then
                 write(test_log,'(a)') 'PASS'
             else
-                write(test_log,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(test_log,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 40962_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
@@ -746,10 +748,11 @@ contains
         dimsize = 0_SMIOL_offset_kind
         ierr = SMIOLf_inquire_dim(file, 'nElements', dimsize)
         if (ierr == SMIOL_SUCCESS) then
-            if (dimsize == 1_SMIOL_offset_kind) then
+            if (dimsize == 99999999999_SMIOL_offset_kind) then
                 write(test_log,'(a)') 'PASS'
             else
-                write(test_log,'(a)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong'
+                write(test_log,'(a,a,i11,a,i11)') 'FAIL - SMIOL_SUCCESS was returned, but the dimension size is wrong', &
+                               ' (got ', dimsize, ', expected ', 99999999999_SMIOL_offset_kind, ')'
                 ierrcount = ierrcount + 1
             end if
         else
