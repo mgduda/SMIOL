@@ -182,7 +182,9 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 				NC_NOCLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
 			free((*file));
 			(*file) = NULL;
-			return -996;
+			context->lib_type = SMIOL_LIBRARY_PNETCDF;
+			context->lib_ierr = ierr;
+			return SMIOL_LIBRARY_ERROR;
 		}
 	}
 	else if (mode & SMIOL_FILE_READ) {
@@ -190,7 +192,9 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 				NC_NOWRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
 			free((*file));
 			(*file) = NULL;
-			return -996;
+			context->lib_type = SMIOL_LIBRARY_PNETCDF;
+			context->lib_ierr = ierr;
+			return SMIOL_LIBRARY_ERROR;
 		}
 	}
 	else {
@@ -400,9 +404,37 @@ const char *SMIOL_error_string(int errno)
 		return "internal MPI call failed";
 	case SMIOL_FORTRAN_ERROR:
 		return "Fortran wrapper detected an inconsistency in C return values";
+	case SMIOL_LIBRARY_ERROR:
+		return "Library-specific error -- please use SMIOL_lib_error_string";
 	default:
 		return "Unknown error";
 	}
+}
+
+
+/********************************************************************************
+ *
+ * SMIOL_lib_error_string
+ *
+ * Returns an error string for a specified error code.
+ *
+ * Detailed description.
+ *
+ ********************************************************************************/
+const char *SMIOL_lib_error_string(struct SMIOL_context *context)
+{
+	if (context == NULL) {
+		return "SMIOL_context argument is a NULL pointer";
+	}
+
+#ifdef SMIOL_PNETCDF
+	if (context->lib_type == SMIOL_LIBRARY_PNETCDF) {
+		return ncmpi_strerror(context->lib_ierr);
+	}
+#endif
+
+	return "Could not find matching library for the source of the error";
+
 }
 
 

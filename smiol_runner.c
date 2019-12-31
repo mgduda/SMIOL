@@ -332,6 +332,26 @@ int test_open_close(void)
 		errcount++;
 	}
 
+fprintf(stderr, ">>>>> Try opening a non-existent file <<<<<\n");
+	ierr = SMIOL_open_file(context, "fooblas.nc", SMIOL_FILE_READ, &file);
+	if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(stderr, "%s\n", SMIOL_lib_error_string(context));
+	}
+	else {
+		fprintf(stderr, "%i\n", ierr);
+		fprintf(stderr, "We did not get the error we were expecting...\n");
+	}
+
+fprintf(stderr, ">>>>> Try creating a file for which we have insufficient permission <<<<<\n");
+	ierr = SMIOL_open_file(context, "/usr/local/testfile.nc", SMIOL_FILE_CREATE, &file);
+	if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(stderr, "%s\n", SMIOL_lib_error_string(context));
+	}
+	else {
+		fprintf(stderr, "%i\n", ierr);
+		fprintf(stderr, "We did not get the error we were expecting...\n");
+	}
+
 	/* Free the SMIOL context */
 	ierr = SMIOL_finalize(&context);
 	if (ierr != SMIOL_SUCCESS || context != NULL) {

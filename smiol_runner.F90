@@ -276,6 +276,22 @@ contains
                 ierrcount = ierrcount + 1
         end if
 
+write(0,*) '>>>>> Try opening a non-existent file <<<<<'
+        ierr = SMIOLf_open_file(context, 'fooblas.nc', SMIOL_FILE_READ, file)
+        if (ierr == SMIOL_LIBRARY_ERROR) then
+                write(0,'(a)') SMIOLf_lib_error_string(context)
+        else
+                write(0,'(a)') 'We did not get the error we were expecting...'
+        end if
+
+write(0,*) '>>>>> Try creating a file for which we have insufficient permission <<<<<'
+        ierr = SMIOLf_open_file(context, '/usr/local/testfile.nc', SMIOL_FILE_CREATE, file)
+        if (ierr == SMIOL_LIBRARY_ERROR) then
+                write(0,'(a)') SMIOLf_lib_error_string(context)
+        else
+                write(0,'(a)') 'We did not get the error we were expecting...'
+        end if
+
         ! Free the SMIOL context
         ierr = SMIOLf_finalize(context)
         if (ierr /= SMIOL_SUCCESS .or. associated(context)) then
