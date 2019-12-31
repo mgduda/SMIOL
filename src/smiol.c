@@ -7,6 +7,8 @@
 #include "pnetcdf.h"
 #endif
 
+char mpi_errmsg[MPI_MAX_ERROR_STRING];
+
 
 /********************************************************************************
  *
@@ -423,6 +425,9 @@ const char *SMIOL_error_string(int errno)
  ********************************************************************************/
 const char *SMIOL_lib_error_string(struct SMIOL_context *context)
 {
+	int mpi_ierr;
+	int mpi_strlen;
+
 	if (context == NULL) {
 		return "SMIOL_context argument is a NULL pointer";
 	}
@@ -432,6 +437,11 @@ const char *SMIOL_lib_error_string(struct SMIOL_context *context)
 		return ncmpi_strerror(context->lib_ierr);
 	}
 #endif
+
+	if (context->lib_type == SMIOL_LIBRARY_MPI) {
+		mpi_ierr = MPI_Error_string(context->lib_ierr, mpi_errmsg, &mpi_strlen);
+		return (const char *)mpi_errmsg;   /* Is this guaranteed to be null-terminated? */
+	}
 
 	return "Could not find matching library for the source of the error";
 

@@ -10,3 +10,4 @@
 #define SMIOL_FILE_WRITE        (4)
 
 #define SMIOL_LIBRARY_PNETCDF (1000)
+#define SMIOL_LIBRARY_MPI     (1001)
