@@ -34,7 +34,7 @@ module SMIOLf
               SMIOLf_free_decomp
 
 
-    integer, parameter :: SMIOL_offset_kind = c_int64_t
+    integer, parameter :: SMIOL_offset_kind = c_int64_t   ! Must match SMIOL_Offset in smiol.h
 
 
     type, bind(C) :: SMIOLf_context
@@ -353,10 +353,11 @@ contains
         ! C interface definitions
         interface
             function SMIOL_define_dim(file, dimname, dimsize) result(ierr) bind(C, name='SMIOL_define_dim')
-                use iso_c_binding, only : c_ptr, c_char, c_int64_t, c_int
+                use iso_c_binding, only : c_ptr, c_char, c_int
+                import SMIOL_offset_kind
                 type (c_ptr), value :: file
                 character(kind=c_char), dimension(*) :: dimname
-                integer(kind=c_int64_t), value :: dimsize
+                integer(kind=SMIOL_offset_kind), value :: dimsize
                 integer(kind=c_int) :: ierr
             end function
         end interface
@@ -412,10 +413,11 @@ contains
         ! C interface definitions
         interface
             function SMIOL_inquire_dim(file, dimname, dimsize) result(ierr) bind(C, name='SMIOL_inquire_dim')
-                use iso_c_binding, only : c_ptr, c_char, c_int64_t, c_int
+                use iso_c_binding, only : c_ptr, c_char, c_int
+                import SMIOL_offset_kind
                 type (c_ptr), value :: file
                 character(kind=c_char), dimension(*) :: dimname
-                integer(kind=c_int64_t) :: dimsize
+                integer(kind=SMIOL_offset_kind) :: dimsize
                 integer(kind=c_int) :: ierr
             end function
         end interface

@@ -241,7 +241,7 @@ int SMIOL_close_file(struct SMIOL_file **file)
  * code is returned.
  *
  ********************************************************************************/
-int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsize)
+int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, SMIOL_Offset dimsize)
 {
 #ifdef SMIOL_PNETCDF
 	int dimidp;
@@ -267,14 +267,14 @@ int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsi
 	/*
 	 * The parallel-netCDF library does not permit zero-length dimensions
 	 */
-	if (dimsize == 0) {
+	if (dimsize == (SMIOL_Offset)0) {
 		return -999;
 	}
 
 	/*
 	 * Handle unlimited / record dimension specifications
 	 */
-	if (dimsize < 0) {
+	if (dimsize < (SMIOL_Offset)0) {
 		len = NC_UNLIMITED;
 	}
 	else {
@@ -305,7 +305,7 @@ int SMIOL_define_dim(struct SMIOL_file *file, const char *dimname, int64_t dimsi
  * code is returned.
  *
  ********************************************************************************/
-int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, int64_t *dimsize)
+int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, SMIOL_Offset *dimsize)
 {
 #ifdef SMIOL_PNETCDF
 	int dimidp;
@@ -335,16 +335,16 @@ int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, int64_t *dim
 
 #ifdef SMIOL_PNETCDF
 	if ((ierr = ncmpi_inq_dimid(file->ncidp, dimname, &dimidp)) != NC_NOERR) {
-		(*dimsize) = -1;  /* TODO: should there be a well-defined invalid size? */
+		(*dimsize) = (SMIOL_Offset)(-1);  /* TODO: should there be a well-defined invalid size? */
 		return -996;
 	}
 
 	if ((ierr = ncmpi_inq_dimlen(file->ncidp, dimidp, &len)) != NC_NOERR) {
-		(*dimsize) = -1;  /* TODO: should there be a well-defined invalid size? */
+		(*dimsize) = (SMIOL_Offset)(-1);  /* TODO: should there be a well-defined invalid size? */
 		return -996;
 	}
 
-	(*dimsize) = (int64_t)len;
+	(*dimsize) = (SMIOL_Offset)len;
 #endif
 
 	return SMIOL_SUCCESS;
