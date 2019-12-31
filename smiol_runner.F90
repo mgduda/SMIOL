@@ -59,7 +59,7 @@ program smiol_runner
         stop 1
     endif
 
-    if (SMIOLf_open_file(context, "blahf.nc", file) /= SMIOL_SUCCESS) then
+    if (SMIOLf_open_file(context, "blahf.nc", SMIOL_FILE_CREATE, file) /= SMIOL_SUCCESS) then
         write(0,*) "ERROR: 'SMIOLf_open_file' was not called successfully"
         stop 1
     endif
@@ -258,7 +258,7 @@ contains
         ! Everything OK (SMIOLf_open_file)
         write(0,'(a)',advance='no') 'Everything OK (SMIOLf_open_file): '
         nullify(file)
-        ierr = SMIOLf_open_file(context, 'test_fortran.nc', file)
+        ierr = SMIOLf_open_file(context, 'test_fortran.nc', SMIOL_FILE_CREATE, file)
         if (ierr == SMIOL_SUCCESS .and. associated(file)) then
                 write(0,'(a)') 'PASS'
         else

@@ -139,15 +139,15 @@ int SMIOL_inquire(void)
  *
  * Opens a file within a SMIOL context.
  *
- * Creates or opens the file specified by filename within the provided SMIOL
- * context.
+ * Depending on the specified file mode, creates or opens the file specified
+ * by filename within the provided SMIOL context.
  *
  * Upon successful completion, SMIOL_SUCCESS is returned, and the file handle argument
  * will point to a valid file handle. Otherwise, the file handle is NULL and an error
  * code other than SMIOL_success is returned.
  *
  ********************************************************************************/
-int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct SMIOL_file **file)
+int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mode, struct SMIOL_file **file)
 {
 	int ierr;
 
@@ -177,10 +177,26 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, struct 
 	(*file)->context = context;
 
 #ifdef SMIOL_PNETCDF
-	if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename, NC_NOCLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
+	if (mode & SMIOL_FILE_CREATE) {
+		if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename,
+				NC_NOCLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
+			free((*file));
+			(*file) = NULL;
+			return -996;
+		}
+	}
+	else if (mode & SMIOL_FILE_READ) {
+		if ((ierr = ncmpi_open(MPI_Comm_f2c(context->fcomm), filename,
+				NC_NOWRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
+			free((*file));
+			(*file) = NULL;
+			return -996;
+		}
+	}
+	else {
 		free((*file));
 		(*file) = NULL;
-		return -996;
+		return -999;
 	}
 #endif
 

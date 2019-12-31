@@ -3,3 +3,7 @@
 #define SMIOL_INVALID_ARGUMENT (-2)
 #define SMIOL_MPI_ERROR        (-3)
 #define SMIOL_FORTRAN_ERROR    (-4)
+
+#define SMIOL_FILE_CREATE       (1)
+#define SMIOL_FILE_READ         (2)
+#define SMIOL_FILE_WRITE        (4)
