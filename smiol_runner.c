@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 	int ierr;
 	int my_proc_id;
-	int64_t dimsize;
+	SMIOL_Offset dimsize;
 	size_t n_compute_elements = 1;
 	size_t n_io_elements = 1;
 	int64_t *compute_elements;
@@ -702,7 +702,7 @@ int test_dimensions(FILE *test_log)
 {
 	int ierr;
 	int errcount;
-	int64_t dimsize;
+	SMIOL_Offset dimsize;
 	struct SMIOL_context *context;
 	struct SMIOL_file *file;
 
@@ -829,7 +829,7 @@ int test_dimensions(FILE *test_log)
 
 	/* Everything OK for SMIOL_inquire_dim, unlimited dimension */
 	fprintf(test_log, "Everything OK - unlimited dimension (SMIOL_inquire_dim): ");
-	dimsize = (int64_t)0;
+	dimsize = (SMIOL_Offset)0;
 	ierr = SMIOL_inquire_dim(file, "Time", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
 		if (dimsize == (int64_t)0) {
@@ -848,7 +848,7 @@ int test_dimensions(FILE *test_log)
 
 	/* Everything OK for SMIOL_inquire_dim, small non-record dimension */
 	fprintf(test_log, "Everything OK - small non-record dimension (SMIOL_inquire_dim): ");
-	dimsize = (int64_t)0;
+	dimsize = (SMIOL_Offset)0;
 	ierr = SMIOL_inquire_dim(file, "nCells", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
 		if (dimsize == (int64_t)40962) {
@@ -867,7 +867,7 @@ int test_dimensions(FILE *test_log)
 
 	/* Everything OK for SMIOL_inquire_dim, large non-record dimension */
 	fprintf(test_log, "Everything OK - large non-record dimension (SMIOL_inquire_dim): ");
-	dimsize = (int64_t)0;
+	dimsize = (SMIOL_Offset)0;
 	ierr = SMIOL_inquire_dim(file, "nElements", &dimsize);
 	if (ierr == SMIOL_SUCCESS) {
 		if (dimsize == (int64_t)99999999999) {
