@@ -3,7 +3,13 @@
  *******************************************************************************/
 
 #include <stdint.h>
+
+#ifdef SMIOL_MPI
 #include "mpi.h"
+#else
+#define MPI_Fint int
+#define MPI_Comm int
+#endif
 
 /*
  * Types

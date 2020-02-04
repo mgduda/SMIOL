@@ -17,8 +17,8 @@ gnu:
 	 "CFLAGS = -g -Wall -pedantic" \
 	 "FC = gfortran"\
 	 "FFLAGS = -g -Wall -fcheck=all -pedantic -std=f2003 -fbacktrace" \
-	 "CC_PARALLEL = mpicc" \
-	 "FC_PARALLEL = mpif90" )
+	 "CC_PARALLEL = gcc" \
+	 "FC_PARALLEL = gfortran" )
 
 intel:
 	( $(MAKE) smiol \

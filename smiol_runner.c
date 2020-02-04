@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include "smiol.h"
 
+#ifndef SMIOL_MPI
+#define MPI_COMM_WORLD 0
+#endif
+
 /*******************************************************************************
  * SMIOL C Runner - Take SMIOL out for a run!
  *******************************************************************************/
@@ -29,6 +33,7 @@ int main(int argc, char **argv)
 		n_io_elements = (size_t) atoi(argv[1]);
 	}
 
+#ifdef SMIOL_MPI
 	if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
 		fprintf(stderr, "Error: MPI_Init failed.\n");
 		return 1;
@@ -37,6 +42,9 @@ int main(int argc, char **argv)
 	if (MPI_Comm_rank(MPI_COMM_WORLD, &my_proc_id) != MPI_SUCCESS) {
 		fprintf(stderr, "Error: MPI_Comm_rank failed.\n");
 	}
+#else
+	my_proc_id = 0;
+#endif
 
 	sprintf(log_fname, "smiol.%04d.test", my_proc_id);
 	test_log = fopen(log_fname, "w");
@@ -223,10 +231,12 @@ int main(int argc, char **argv)
 
 	fprintf(stderr, "Called all SMIOL functions successfully!\n");
 
+#ifdef SMIOL_MPI
 	if (MPI_Finalize() != MPI_SUCCESS) {
 		fprintf(stderr, "Error: MPI_Finalize failed.\n");
 		return 1;
 	}
+#endif
 
 	return 0;
 }
@@ -254,6 +264,7 @@ int test_init_finalize(FILE *test_log)
 		fprintf(test_log, "PASS\n");
 	}
 
+#ifdef SMIOL_MPI
 	/* Invalid MPI communicator, and with a non-NULL context that should be NULL on return */
 	fprintf(test_log, "Invalid MPI communicator (SMIOL_init): ");
 	context = (struct SMIOL_context *)NULL + 42;   /* Any non-NULL value should be fine... */
@@ -269,6 +280,7 @@ int test_init_finalize(FILE *test_log)
 	else {
 		fprintf(test_log, "PASS\n");
 	}
+#endif
 
 	/* Handle NULL context in SMIOL_finalize */
 	fprintf(test_log, "Handle NULL context (SMIOL_finalize): ");
@@ -333,7 +345,9 @@ int test_init_finalize(FILE *test_log)
 	}
 
 	fflush(test_log);
+#ifdef SMIOL_MPI
 	ierr = MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
 	fprintf(test_log, "\n");
 
@@ -372,6 +386,7 @@ int test_open_close(FILE *test_log)
 		errcount++;
 	}
 
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 	/* Try to create a file for which we should not have sufficient permissions */
 	fprintf(test_log, "Try to create a file with insufficient permissions: ");
@@ -480,6 +495,7 @@ int test_open_close(FILE *test_log)
 		errcount++;
 	}
 #endif
+#endif
 
 	/* Everything OK (SMIOL_open_file) */
 	fprintf(test_log, "Everything OK (SMIOL_open_file): ");
@@ -512,7 +528,9 @@ int test_open_close(FILE *test_log)
 	}
 
 	fflush(test_log);
+#ifdef SMIOL_MPI
 	ierr = MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
 	fprintf(test_log, "\n");
 
@@ -673,7 +691,9 @@ int test_decomp(FILE *test_log)
 	}
 
 	fflush(test_log);
+#ifdef SMIOL_MPI
 	ierr = MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
 	fprintf(test_log, "\n");
 

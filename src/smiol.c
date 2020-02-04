@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include "smiol.h"
 
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 #include "pnetcdf.h"
+#endif
 #endif
 
 
@@ -21,7 +23,11 @@
  ********************************************************************************/
 int SMIOL_fortran_init(MPI_Fint comm, struct SMIOL_context **context)
 {
+#ifdef SMIOL_MPI
 	return SMIOL_init(MPI_Comm_f2c(comm), context);
+#else
+	return SMIOL_init(0, context);
+#endif
 }
 
 
@@ -54,6 +60,7 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
+#ifdef SMIOL_MPI
 	/*
 	 * We cannot check for every possible invalid argument for comm, but
 	 * at least we can verify that the communicator is not MPI_COMM_NULL
@@ -67,6 +74,7 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 
 		return SMIOL_INVALID_ARGUMENT;
 	}
+#endif
 
 	*context = (struct SMIOL_context *)malloc(sizeof(struct SMIOL_context));
 	if ((*context) == NULL) {
@@ -79,6 +87,7 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 	(*context)->lib_ierr = 0;
 	(*context)->lib_type = SMIOL_LIBRARY_UNKNOWN;
 
+#ifdef SMIOL_MPI
 	/*
 	 * Make a duplicate of the MPI communicator for use by SMIOL
 	 */
@@ -100,6 +109,10 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 		(*context) = NULL;
 		return SMIOL_MPI_ERROR;
 	}
+#else
+	(*context)->comm_size = 1;
+	(*context)->comm_rank = 0;
+#endif
 
 	return SMIOL_SUCCESS;
 }
@@ -132,12 +145,14 @@ int SMIOL_finalize(struct SMIOL_context **context)
 		return SMIOL_SUCCESS;
 	}
 
+#ifdef SMIOL_MPI
 	smiol_comm = MPI_Comm_f2c((*context)->fcomm);
 	if (MPI_Comm_free(&smiol_comm) != MPI_SUCCESS) {
 		free((*context));
 		(*context) = NULL;
 		return SMIOL_MPI_ERROR;
 	}
+#endif
 
 	free((*context));
 	(*context) = NULL;
@@ -177,8 +192,10 @@ int SMIOL_inquire(void)
  ********************************************************************************/
 int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mode, struct SMIOL_file **file)
 {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 	int ierr;
+#endif
 #endif
 
 	/*
@@ -207,6 +224,7 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	(*file)->context = context;
 
 	if (mode & SMIOL_FILE_CREATE) {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 		if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename,
 				NC_CLOBBER, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
@@ -217,8 +235,10 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 			return SMIOL_LIBRARY_ERROR;
 		}
 #endif
+#endif
 	}
 	else if (mode & SMIOL_FILE_WRITE) {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 		if ((ierr = ncmpi_open(MPI_Comm_f2c(context->fcomm), filename,
 				NC_WRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
@@ -229,8 +249,10 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 			return SMIOL_LIBRARY_ERROR;
 		}
 #endif
+#endif
 	}
 	else if (mode & SMIOL_FILE_READ) {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 		if ((ierr = ncmpi_open(MPI_Comm_f2c(context->fcomm), filename,
 				NC_NOWRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
@@ -240,6 +262,7 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 			context->lib_ierr = ierr;
 			return SMIOL_LIBRARY_ERROR;
 		}
+#endif
 #endif
 	}
 	else {
@@ -266,8 +289,10 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
  ********************************************************************************/
 int SMIOL_close_file(struct SMIOL_file **file)
 {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 	int ierr;
+#endif
 #endif
 
 	/*
@@ -278,6 +303,7 @@ int SMIOL_close_file(struct SMIOL_file **file)
 		return SMIOL_SUCCESS;
 	}
 
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 	if ((ierr = ncmpi_close((*file)->ncidp)) != NC_NOERR) {
 		((*file)->context)->lib_type = SMIOL_LIBRARY_PNETCDF;
@@ -286,6 +312,7 @@ int SMIOL_close_file(struct SMIOL_file **file)
 		(*file) = NULL;
 		return SMIOL_LIBRARY_ERROR;
 	}
+#endif
 #endif
 
 	free((*file));
@@ -484,9 +511,11 @@ const char *SMIOL_lib_error_string(struct SMIOL_context *context)
 	}
 
 	switch (context->lib_type) {
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
 	case SMIOL_LIBRARY_PNETCDF:
 		return ncmpi_strerror(context->lib_ierr);
+#endif
 #endif
 	default:
 		return "Could not find matching library for the source of the error";

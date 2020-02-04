@@ -4,7 +4,11 @@ program smiol_runner
 
     use iso_c_binding, only : c_size_t, c_int64_t
     use SMIOLf
+#ifdef SMIOL_MPI
     use mpi
+#else
+#define MPI_COMM_WORLD 0
+#endif
 
     implicit none
 
@@ -20,6 +24,7 @@ program smiol_runner
     type (SMIOLf_file), pointer :: file => null()
     character(len=16) :: log_fname
 
+#ifdef SMIOL_MPI
     call MPI_Init(ierr)
     if (ierr /= MPI_SUCCESS) then
         write(0,'(a)') 'Error: MPI_Init failed'
@@ -31,6 +36,9 @@ program smiol_runner
         write(0,'(a)') 'Error: MPI_Comm_rank failed'
         stop 1
     end if
+#else
+    my_proc_id = 0;
+#endif
 
     write(log_fname, '(a,I4.4,a)') "smiolf.", my_proc_id, ".test"
     open(unit=test_log, file=log_fname, status='replace')
@@ -190,11 +198,13 @@ program smiol_runner
 
     close(test_log)
 
+#ifdef SMIOL_MPI
     call MPI_Finalize(ierr)
     if (ierr /= MPI_SUCCESS) then
         write(0,'(a)') 'Error: MPI_Finalize failed'
         stop 1
     end if
+#endif
 
     stop 0
 
@@ -217,6 +227,7 @@ contains
 
         ierrcount = 0
 
+#ifdef SMIOL_MPI
         ! Invalid MPI communicator, and with an associated context that should be nullified
         write(test_log,'(a)',advance='no') 'Invalid MPI communicator (SMIOLf_init): '
         allocate(context_temp)
@@ -232,6 +243,7 @@ contains
         else
             write(test_log,'(a)') 'PASS'
         end if
+#endif
 
         ! Handle unassociated context in SMIOL_finalize
         write(test_log,'(a)',advance='no') 'Handle unassociated context (SMIOLf_finalize): '
@@ -321,6 +333,7 @@ contains
             ierrcount = ierrcount + 1
         end if
 
+#ifdef SMIOL_MPI
 #ifdef SMIOL_PNETCDF
         ! Try to create a file for which we should not have sufficient permissions
         write(test_log,'(a)',advance='no') 'Try to create a file with insufficient permissions: '
@@ -363,6 +376,7 @@ contains
             write(test_log,'(a)') 'FAIL - expected error code of SMIOL_LIBRARY_ERROR not returned'
             ierrcount = ierrcount + 1
         end if
+#endif
 #endif
 
         ! Create a file to be closed and opened again
