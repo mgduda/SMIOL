@@ -467,7 +467,8 @@ contains
     !> \details
     !>  Defines a variable with the specified name, type, and dimensions in an open
     !>  file pointed to by the file argument. The varname and dimnames arguments
-    !>  are expected to be null-terminated strings.
+    !>  are expected to be null-terminated strings, except if the variable has
+    !>  zero dimensions, in which case the dimnames argument is ignored.
     !>
     !>  Upon successful completion, SMIOL_SUCCESS is returned; otherwise, an error
     !>  code is returned.

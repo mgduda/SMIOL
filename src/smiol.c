@@ -436,7 +436,8 @@ int SMIOL_inquire_dim(struct SMIOL_file *file, const char *dimname, SMIOL_Offset
  *
  * Defines a variable with the specified name, type, and dimensions in an open
  * file pointed to by the file argument. The varname and dimnames arguments
- * are expected to be null-terminated strings.
+ * are expected to be null-terminated strings, except if the variable has zero
+ * dimensions, in which case the dimnames argument may be a NULL pointer.
  *
  * Upon successful completion, SMIOL_SUCCESS is returned; otherwise, an error
  * code is returned.
