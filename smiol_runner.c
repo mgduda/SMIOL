@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "smiol.h"
 
 /*******************************************************************************
@@ -935,6 +936,8 @@ int test_variables(FILE *test_log)
 	struct SMIOL_context *context;
 	struct SMIOL_file *file;
 	char **dimnames;
+	int ndims;
+	int vartype;
 
 	fprintf(test_log, "********************************************************************************\n");
 	fprintf(test_log, "************ SMIOL_define_var / SMIOL_inquire_var ******************************\n");
@@ -1173,6 +1176,85 @@ int test_variables(FILE *test_log)
 	snprintf(dimnames[1], 32, "foobar");
 	snprintf(dimnames[2], 32, "nVertLevels");
 	ierr = SMIOL_define_var(file, "should_not_exist", SMIOL_INT32, 3, (const char **)dimnames);
+	if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(test_log, "PASS (%s)\n", SMIOL_lib_error_string(context));
+	} else if (ierr == SMIOL_SUCCESS) {
+		fprintf(test_log, "FAIL - SMIOL_SUCCESS was erroneously returned\n");
+		errcount++;
+	} else {
+		fprintf(test_log, "FAIL - a return code of SMIOL_LIBRARY_ERROR was expected\n");
+		errcount++;
+	}
+
+	/* Close the SMIOL file */
+	ierr = SMIOL_close_file(&file);
+	if (ierr != SMIOL_SUCCESS || file != NULL) {
+		fprintf(test_log, "Failed to close SMIOL file...\n");
+		return -1;
+	}
+
+	/* Re-open the SMIOL file */
+	file = NULL;
+	ierr = SMIOL_open_file(context, "test_vars.nc", SMIOL_FILE_READ, &file);
+	if (ierr != SMIOL_SUCCESS || file == NULL) {
+		fprintf(test_log, "Failed to re-open SMIOL file...\n");
+		return -1;
+	}
+
+	/* Inquire about just the number of dimensions for a variable */
+	fprintf(test_log, "Inquire about just the number of dimensions for a variable: ");
+	ndims = -1;
+	ierr = SMIOL_inquire_var(file, "r0_t", NULL, &ndims, NULL);
+	if (ierr == SMIOL_SUCCESS && ndims == 1) {
+		fprintf(test_log, "PASS\n");
+	} else if (ierr == SMIOL_SUCCESS && ndims != 1) {
+		fprintf(test_log, "FAIL - SMIOL_SUCCESS was returned, but the number of dimensions was wrong\n");
+		errcount++;
+	} else if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(test_log, "FAIL (%s)\n", SMIOL_lib_error_string(context));
+	} else {
+		fprintf(test_log, "FAIL - %s\n", SMIOL_error_string(ierr));
+		errcount++;
+	}
+
+	/* Inquire about just the type of a variable */
+	fprintf(test_log, "Inquire about just the type of a variable: ");
+	vartype = SMIOL_UNKNOWN_VAR_TYPE;
+	ierr = SMIOL_inquire_var(file, "r5_t", &vartype, NULL, NULL);
+	if (ierr == SMIOL_SUCCESS && vartype == SMIOL_REAL32) {
+		fprintf(test_log, "PASS\n");
+	} else if (ierr == SMIOL_SUCCESS && vartype != SMIOL_REAL32) {
+		fprintf(test_log, "FAIL - SMIOL_SUCCESS was returned, but the variable type was wrong\n");
+		errcount++;
+	} else if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(test_log, "FAIL (%s)\n", SMIOL_lib_error_string(context));
+	} else {
+		fprintf(test_log, "FAIL - %s\n", SMIOL_error_string(ierr));
+		errcount++;
+	}
+
+	/* Inquire about just the dimension names for a variable */
+	fprintf(test_log, "Inquire about just the dimension names for a variable: ");
+	snprintf(dimnames[0], 32, "----------");
+	snprintf(dimnames[1], 32, "----------");
+	ierr = SMIOL_inquire_var(file, "r1_t", NULL, NULL, dimnames);
+	if (ierr == SMIOL_SUCCESS &&
+	    strncmp(dimnames[0], "Time", 32) == 0 &&
+	    strncmp(dimnames[1], "nCells", 32) == 0) {
+		fprintf(test_log, "PASS\n");
+	} else if (ierr == SMIOL_SUCCESS) {
+		fprintf(test_log, "FAIL - SMIOL_SUCCESS was returned, but the dimension names were wrong\n");
+		errcount++;
+	} else if (ierr == SMIOL_LIBRARY_ERROR) {
+		fprintf(test_log, "FAIL (%s)\n", SMIOL_lib_error_string(context));
+	} else {
+		fprintf(test_log, "FAIL - %s\n", SMIOL_error_string(ierr));
+		errcount++;
+	}
+
+	/* Try to inquire about an undefined variable */
+	fprintf(test_log, "Try to inquire about an undefined variable: ");
+	ierr = SMIOL_inquire_var(file, "fooblaz", &vartype, &ndims, dimnames);
 	if (ierr == SMIOL_LIBRARY_ERROR) {
 		fprintf(test_log, "PASS (%s)\n", SMIOL_lib_error_string(context));
 	} else if (ierr == SMIOL_SUCCESS) {
