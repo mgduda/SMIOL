@@ -474,7 +474,7 @@ int SMIOL_define_var(struct SMIOL_file *file, const char *varname, int vartype, 
 	/*
 	 * Check that variable dimension names are valid
 	 */
-	if (dimnames == NULL && ndims >= 0) {
+	if (dimnames == NULL && ndims > 0) {
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
