@@ -2392,10 +2392,13 @@ contains
         integer(kind=c_size_t) :: i, j, k
         integer(kind=c_size_t) :: n_compute_elements
         integer(kind=SMIOL_offset_kind), dimension(:), pointer :: compute_elements
-        integer, dimension(:), allocatable :: int_buf
-        real, dimension(:,:), allocatable :: real_buf
-        character(len=65) :: char_buf
-        real(kind=R8KIND), dimension(:,:,:), allocatable :: double_buf
+        integer, dimension(:), allocatable, target :: int_buf
+        integer, dimension(:), pointer :: int_buf_p
+        real, dimension(:,:), allocatable, target :: real_buf
+        real, dimension(:,:), pointer :: real_buf_p
+        character(len=65), pointer :: char_buf
+        real(kind=R8KIND), dimension(:,:,:), allocatable, target :: double_buf
+        real(kind=R8KIND), dimension(:,:,:), pointer :: double_buf_p
         type (SMIOLf_context), pointer :: context => null()
         type (SMIOLf_file), pointer :: file => null()
         character(len=32), dimension(6) :: dimnames
@@ -2495,6 +2498,7 @@ contains
         ! Testing put/get var on a non-decomposed variable
         !
         write(test_log,'(a)',advance='no') "Everything Ok - Putting and getting a non-decomposed character var: "
+        allocate(char_buf)
         char_buf = "YYYY-MM-DD_hh:mm:ss"
         nullify(decomp)
         ierr = SMIOLf_put_var(file, 'xtime', decomp, char_buf)
@@ -2523,6 +2527,7 @@ contains
             write(test_log, '(a)') "PASS"
         endif
 #endif
+        deallocate(char_buf)
 
         ! Only preforme these tests with 2 MPI tasks
         if (context % comm_size == 2) then
@@ -2548,9 +2553,10 @@ contains
             !
             write(test_log,'(a)',advance='no') "Everything Ok - Putting and getting a 1d integer: "
             allocate(int_buf(n_compute_elements))
+            int_buf_p => int_buf
             int_buf(:) = 42 * (context % comm_rank + 1)
 
-            ierr = SMIOLf_put_var(file, 'i_1d', decomp, int_buf, size(int_buf))
+            ierr = SMIOLf_put_var(file, 'i_1d', decomp, int_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on put: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2558,7 +2564,7 @@ contains
 
             ! Get 1d int
             int_buf(:) = -1
-            ierr = SMIOLf_get_var(file, 'i_1d', decomp, int_buf, size(int_buf))
+            ierr = SMIOLf_get_var(file, 'i_1d', decomp, int_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on get: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2577,6 +2583,7 @@ contains
                 write(test_log,'(a)') "PASS"
             endif
             deallocate(int_buf)
+            nullify(int_buf_p)
 
             !
             ! Test 2d integer
@@ -2584,9 +2591,10 @@ contains
             fail = 0 
             write(test_log,'(a)',advance='no') "Everything Ok - Putting and getting a 2d real: "
             allocate(real_buf(52, n_compute_elements))
+            real_buf_p => real_buf
             real_buf(:,:) = 3.14 * (context % comm_rank + 1)
 
-            ierr = SMIOLf_put_var(file, 'r_2d', decomp, real_buf, size(real_buf, 1), size(real_buf, 2))
+            ierr = SMIOLf_put_var(file, 'r_2d', decomp, real_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on put: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2594,7 +2602,7 @@ contains
 
             ! Get
             real_buf(:,:) = -1.0
-            ierr = SMIOLf_get_var(file, 'r_2d', decomp, real_buf, size(real_buf, 1), size(real_buf, 2))
+            ierr = SMIOLf_get_var(file, 'r_2d', decomp, real_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on get: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2615,6 +2623,7 @@ contains
                 write(test_log,'(a)') "PASS"
             endif
             deallocate(real_buf)
+            nullify(real_buf_p)
 
             !
             ! 3D Double
@@ -2622,8 +2631,9 @@ contains
             write(test_log,'(a)',advance='no') "Everything Ok - Putting and getting a 3d double: "
             fail = 0
             allocate(double_buf(12, 52, n_compute_elements))
+            double_buf_p => double_buf
             double_buf(:,:,:) = 3.141593653_R8KIND * (context % comm_rank + 1)
-            ierr = SMIOLf_put_var(file, 'd_3d', decomp, double_buf, size(double_buf, 1), size(double_buf, 2), size(double_buf, 3))
+            ierr = SMIOLf_put_var(file, 'd_3d', decomp, double_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on put: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2631,7 +2641,7 @@ contains
 
             ! Get
             double_buf(:,:,:) = -1.0_R8KIND
-            ierr = SMIOLf_get_var(file, 'd_3d', decomp, double_buf, size(double_buf, 1), size(double_buf, 2), size(double_buf, 3))
+            ierr = SMIOLf_get_var(file, 'd_3d', decomp, double_buf_p)
             if (ierr /= SMIOL_SUCCESS) then
                 write(test_log,'(a)') "FAIL - SMIOL_SUCCESS was not returned on get: ", SMIOLf_lib_error_string(context)
                 ierrcount = ierrcount + 1
@@ -2653,6 +2663,7 @@ contains
                 write(test_log,'(a)') "PASS"
             endif
             deallocate(double_buf)
+            nullify(double_buf_p)
 
 
             if (SMIOLf_free_decomp(decomp) /= SMIOL_SUCCESS) then

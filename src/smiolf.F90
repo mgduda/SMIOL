@@ -118,11 +118,43 @@ module SMIOLf
     end interface
 
     interface SMIOLf_put_var
-#include "smiolf_put_var_interface_headers.inc"
+        module procedure SMIOLf_put_var_0d_char
+        module procedure SMIOLf_put_var_0d_int32
+        module procedure SMIOLf_put_var_0d_real32
+        module procedure SMIOLf_put_var_0d_real64
+        module procedure SMIOLf_put_var_1d_int32
+        module procedure SMIOLf_put_var_1d_real32
+        module procedure SMIOLf_put_var_1d_real64
+        module procedure SMIOLf_put_var_2d_int32
+        module procedure SMIOLf_put_var_2d_real32
+        module procedure SMIOLf_put_var_2d_real64
+        module procedure SMIOLf_put_var_3d_int32
+        module procedure SMIOLf_put_var_3d_real32
+        module procedure SMIOLf_put_var_3d_real64
+        module procedure SMIOLf_put_var_4d_real32
+        module procedure SMIOLf_put_var_4d_real64
+        module procedure SMIOLf_put_var_5d_real32
+        module procedure SMIOLf_put_var_5d_real64
     end interface SMIOLf_put_var
 
     interface SMIOLf_get_var
-#include "smiolf_get_var_interface_headers.inc"
+        module procedure SMIOLf_get_var_0d_char
+        module procedure SMIOLf_get_var_0d_int32
+        module procedure SMIOLf_get_var_0d_real32
+        module procedure SMIOLf_get_var_0d_real64
+        module procedure SMIOLf_get_var_1d_int32
+        module procedure SMIOLf_get_var_1d_real32
+        module procedure SMIOLf_get_var_1d_real64
+        module procedure SMIOLf_get_var_2d_int32
+        module procedure SMIOLf_get_var_2d_real32
+        module procedure SMIOLf_get_var_2d_real64
+        module procedure SMIOLf_get_var_3d_int32
+        module procedure SMIOLf_get_var_3d_real32
+        module procedure SMIOLf_get_var_3d_real64
+        module procedure SMIOLf_get_var_4d_real32
+        module procedure SMIOLf_get_var_4d_real64
+        module procedure SMIOLf_get_var_5d_real32
+        module procedure SMIOLf_get_var_5d_real64
     end interface SMIOLf_get_var
 
 
@@ -631,16 +663,16 @@ contains
         c_ndims = ndims
 
         !
-        ! Convert dimnames
+        ! Convert dimnames, reversing their order
         !
         allocate(c_dimnames(ndims))
         allocate(strings(ndims))
 
         do j=1,ndims
-            allocate(strings(j) % str(len_trim(dimnames(j))+1))
+            allocate(strings(j) % str(len_trim(dimnames(ndims-j+1))+1))
 
-            do i=1,len_trim(dimnames(j))
-                strings(j) % str(i) = dimnames(j)(i:i)
+            do i=1,len_trim(dimnames(ndims-j+1))
+                strings(j) % str(i) = dimnames(ndims-j+1)(i:i)
             end do
             strings(j) % str(i) = c_null_char
             c_dimnames(j) = c_loc(strings(j) % str)
@@ -703,7 +735,7 @@ contains
         type (c_ptr) :: c_ndims_ptr
         type (c_ptr) :: c_dimnames_ptr
 
-        integer :: i, j
+        integer :: i, j, ndims_in
 
         ! C interface definitions
         interface
@@ -761,11 +793,12 @@ contains
         ! Set C pointers for dimension names
         !
         if (present(dimnames)) then
-            allocate(c_dimnames(size(dimnames)))
-            allocate(strings(size(dimnames)))
+            ndims_in = size(dimnames)
+            allocate(c_dimnames(ndims_in))
+            allocate(strings(ndims_in))
 
-            do j=1,size(dimnames)
-                allocate(strings(j) % str(len(dimnames(j))+1))
+            do j=1,ndims_in
+                allocate(strings(j) % str(len(dimnames(ndims_in-j+1))+1))
                 c_dimnames(j) = c_loc(strings(j) % str)
             end do
             c_dimnames_ptr = c_loc(c_dimnames)
@@ -801,17 +834,17 @@ contains
         !
         if (present(dimnames)) then
             do j=1,c_ndims
-                do i=1,len(dimnames(j))
+                do i=1,len(dimnames(c_ndims-j+1))
                     if (strings(j) % str(i) == c_null_char) exit
                 end do
 
                 i = i - 1
 
-                dimnames(j)(1:i) = transfer(strings(j) % str(1:i), dimnames(j))
-                dimnames(j) = dimnames(j)(1:i)
+                dimnames(c_ndims-j+1)(1:i) = transfer(strings(j) % str(1:i), dimnames(c_ndims-j+1))
+                dimnames(c_ndims-j+1) = dimnames(c_ndims-j+1)(1:i)
             end do
 
-            do j=1,size(dimnames)
+            do j=1,ndims_in
                 deallocate(strings(j) % str)
             end do
             deallocate(strings)
@@ -821,15 +854,2817 @@ contains
     end function SMIOLf_inquire_var
 
 
-    !
-    ! SMIOLf_put_var interfaces include
-    !
-#include "smiolf_put_var_interfaces.inc"
+    function SMIOLf_get_var_0d_char(file, varname, decomp, buf) result(ierr)
 
-    !
-    ! SMIOLf_get_var interfaces include
-    !
-#include "smiolf_get_var_interfaces.inc"
+        use iso_c_binding, only : c_char, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        character(len=*), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        ! Copy to Fortran string here
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_0d_char
+
+
+    function SMIOLf_put_var_0d_char(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_char, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        character(len=*), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        ! Copy to a local c_char array here
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_0d_char
+
+
+    function SMIOLf_get_var_0d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_0d_real32
+
+
+    function SMIOLf_put_var_0d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_0d_real32
+
+
+    function SMIOLf_get_var_0d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_0d_real64
+
+
+    function SMIOLf_put_var_0d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_0d_real64
+
+
+    function SMIOLf_get_var_0d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_0d_int32
+
+
+    function SMIOLf_put_var_0d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc(buf)
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_0d_int32
+
+
+    function c_loc_assumed_shape_1d_real32(a, d1) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_float
+
+        implicit none
+
+        integer, intent(in) :: d1
+        real(kind=c_float), dimension(d1), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_1d_real32
+
+
+    function SMIOLf_get_var_1d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_real32(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_1d_real32
+
+
+    function SMIOLf_put_var_1d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_real32(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_1d_real32
+
+
+    function c_loc_assumed_shape_1d_real64(a, d1) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_double
+
+        implicit none
+
+        integer, intent(in) :: d1
+        real(kind=c_double), dimension(d1), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_1d_real64
+
+
+    function SMIOLf_get_var_1d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_real64(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_1d_real64
+
+
+    function SMIOLf_put_var_1d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_real64(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_1d_real64
+
+
+    function c_loc_assumed_shape_1d_int32(a, d1) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_int
+
+        implicit none
+
+        integer, intent(in) :: d1
+        integer(kind=c_int), dimension(d1), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_1d_int32
+
+
+    function SMIOLf_get_var_1d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_int32(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_1d_int32
+
+
+    function SMIOLf_put_var_1d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_1d_int32(buf,size(buf,dim=1))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_1d_int32
+
+
+    function c_loc_assumed_shape_2d_real32(a, d1, d2) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_float
+
+        implicit none
+
+        integer, intent(in) :: d1, d2
+        real(kind=c_float), dimension(d1,d2), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_2d_real32
+
+
+    function SMIOLf_get_var_2d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_real32(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_2d_real32
+
+
+    function SMIOLf_put_var_2d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_real32(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_2d_real32
+
+
+    function c_loc_assumed_shape_2d_real64(a, d1, d2) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_double
+
+        implicit none
+
+        integer, intent(in) :: d1, d2
+        real(kind=c_double), dimension(d1,d2), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_2d_real64
+
+
+    function SMIOLf_get_var_2d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_real64(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_2d_real64
+
+
+    function SMIOLf_put_var_2d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_real64(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_2d_real64
+
+
+    function c_loc_assumed_shape_2d_int32(a, d1, d2) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_int
+
+        implicit none
+
+        integer, intent(in) :: d1, d2
+        integer(kind=c_int), dimension(d1,d2), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_2d_int32
+
+
+    function SMIOLf_get_var_2d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_int32(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_2d_int32
+
+
+    function SMIOLf_put_var_2d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_2d_int32(buf,size(buf,dim=1),size(buf,dim=2))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_2d_int32
+
+
+    function c_loc_assumed_shape_3d_real32(a, d1, d2, d3) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_float
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3
+        real(kind=c_float), dimension(d1,d2,d3), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_3d_real32
+
+
+    function SMIOLf_get_var_3d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_3d_real32
+
+
+    function SMIOLf_put_var_3d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_3d_real32
+
+
+    function c_loc_assumed_shape_3d_real64(a, d1, d2, d3) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_double
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3
+        real(kind=c_double), dimension(d1,d2,d3), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_3d_real64
+
+
+    function SMIOLf_get_var_3d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_3d_real64
+
+
+    function SMIOLf_put_var_3d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_3d_real64
+
+
+    function c_loc_assumed_shape_3d_int32(a, d1, d2, d3) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_int
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3
+        integer(kind=c_int), dimension(d1,d2,d3), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_3d_int32
+
+
+    function SMIOLf_get_var_3d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_int32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_3d_int32
+
+
+    function SMIOLf_put_var_3d_int32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_int, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        integer(kind=c_int), dimension(:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_3d_int32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_3d_int32
+
+
+    function c_loc_assumed_shape_4d_real32(a, d1, d2, d3, d4) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_float
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3, d4
+        real(kind=c_float), dimension(d1,d2,d3,d4), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_4d_real32
+
+
+    function SMIOLf_get_var_4d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_4d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_4d_real32
+
+
+    function SMIOLf_put_var_4d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_4d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_4d_real32
+
+
+    function c_loc_assumed_shape_4d_real64(a, d1, d2, d3, d4) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_double
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3, d4
+        real(kind=c_double), dimension(d1,d2,d3,d4), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_4d_real64
+
+
+    function SMIOLf_get_var_4d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_4d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_4d_real64
+
+
+    function SMIOLf_put_var_4d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_4d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_4d_real64
+
+
+    function c_loc_assumed_shape_5d_real32(a, d1, d2, d3, d4, d5) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_float
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3, d4, d5
+        real(kind=c_float), dimension(d1,d2,d3,d4,d5), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_5d_real32
+
+
+    function SMIOLf_get_var_5d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_5d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4),size(buf,dim=5))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_5d_real32
+
+
+    function SMIOLf_put_var_5d_real32(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_float, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_float), dimension(:,:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_5d_real32(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4),size(buf,dim=5))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_5d_real32
+
+
+    function c_loc_assumed_shape_5d_real64(a, d1, d2, d3, d4, d5) result(a_ptr)
+
+        use iso_c_binding, only : c_ptr, c_loc, c_double
+
+        implicit none
+
+        integer, intent(in) :: d1, d2, d3, d4, d5
+        real(kind=c_double), dimension(d1,d2,d3,d4,d5), target, intent(in) :: a
+        type (c_ptr) :: a_ptr
+
+        a_ptr = c_loc(a)
+
+    end function c_loc_assumed_shape_5d_real64
+
+
+    function SMIOLf_get_var_5d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_get_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_get_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_5d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4),size(buf,dim=5))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_get_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_get_var_5d_real64
+
+
+    function SMIOLf_put_var_5d_real64(file, varname, decomp, buf) result(ierr)
+
+        use iso_c_binding, only : c_double, c_char, c_loc, c_ptr, c_null_ptr, c_null_char
+
+        implicit none
+
+        ! Arguments
+        type(SMIOLf_file), target :: file
+        character(len=*), intent(in) :: varname
+        type(SMIOLf_decomp), pointer :: decomp
+        real(kind=c_double), dimension(:,:,:,:,:), pointer :: buf
+
+        ! Return status code
+        integer :: ierr
+
+        ! Local variables
+        integer :: i
+        character(kind=c_char), dimension(:), pointer :: c_varname
+        type (c_ptr) :: c_file
+        type (c_ptr) :: c_decomp
+        type (c_ptr) :: c_buf
+
+        interface
+            function SMIOL_put_var(file, varname, decomp, buf) result(ierr) bind(C, name='SMIOL_put_var')
+                 use iso_c_binding, only : c_ptr, c_char, c_int
+                 type (c_ptr), value :: file
+                 character (kind=c_char), dimension(*) :: varname
+                 type (c_ptr), value :: decomp
+                 type (c_ptr), value :: buf
+                 integer (kind=c_int) :: ierr
+            end function
+        end interface
+
+
+        !
+        ! file is a target, so no need to check that it is associated
+        !
+        c_file = c_loc(file)
+
+        !
+        ! decomp may be an unassociated pointer if the corresponding field is
+        ! not decomposed
+        !
+        if (associated(decomp)) then
+            c_decomp = c_loc(decomp)
+        else
+            c_decomp = c_null_ptr
+        end if
+
+        !
+        ! Convert variable name string
+        !
+        allocate(c_varname(len_trim(varname) + 1))
+        do i=1,len_trim(varname)
+            c_varname(i) = varname(i:i)
+        end do
+        c_varname(i) = c_null_char
+
+        !
+        ! buf may be an unassociated pointer if the calling task does not read
+        ! or write any elements of the field
+        !
+        if (associated(buf)) then
+        c_buf = c_loc_assumed_shape_5d_real64(buf,size(buf,dim=1),size(buf,dim=2),size(buf,dim=3),size(buf,dim=4),size(buf,dim=5))
+        else
+            c_buf = c_null_ptr
+        end if
+
+        
+        ierr = SMIOL_put_var(c_file, c_varname, c_decomp, c_buf)
+        
+
+        deallocate(c_varname)
+
+    end function SMIOLf_put_var_5d_real64
 
 
     !
