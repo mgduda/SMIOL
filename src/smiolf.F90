@@ -864,7 +864,7 @@ contains
         type(SMIOLf_file), target :: file
         character(len=*), intent(in) :: varname
         type(SMIOLf_decomp), pointer :: decomp
-        character(len=*), pointer :: buf
+        character(len=:), pointer :: buf
 
         ! Return status code
         integer :: ierr
@@ -941,7 +941,7 @@ contains
         type(SMIOLf_file), target :: file
         character(len=*), intent(in) :: varname
         type(SMIOLf_decomp), pointer :: decomp
-        character(len=*), pointer :: buf
+        character(len=:), pointer :: buf
 
         ! Return status code
         integer :: ierr
