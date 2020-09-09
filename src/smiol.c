@@ -1577,6 +1577,8 @@ const char *SMIOL_error_string(int errno)
 		return "argument is of the wrong type";
 	case SMIOL_INSUFFICIENT_ARG:
 		return "argument is of insufficient size";
+	case SMIOL_ASYNC_ERROR:
+		return "failure in SMIOL asynchronous function";
 	default:
 		return "Unknown error";
 	}
