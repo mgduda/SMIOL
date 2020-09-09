@@ -5,6 +5,7 @@
 #define SMIOL_TYPES_H
 
 #include <stdint.h>
+#include <pthread.h>
 #include "mpi.h"
 
 
@@ -25,6 +26,18 @@ struct SMIOL_context {
 
 	int lib_ierr;   /* Library-specific error code */
 	int lib_type;   /* From which library the error code originated */
+
+	/*
+	 * Asynchronous output
+	 */
+	int active;
+
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_t *thread;
+
+	struct SMIOL_async_buffer *head;
+	struct SMIOL_async_buffer *tail;
 };
 
 struct SMIOL_file {
@@ -72,6 +85,7 @@ struct SMIOL_async_buffer {
 	MPI_Offset *mpi_start;
 	MPI_Offset *mpi_count;
 #endif
+	struct SMIOL_async_buffer *next;
 };
 
 
