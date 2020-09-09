@@ -192,7 +192,7 @@ struct SMIOL_async_buffer *SMIOL_async_queue_remove(struct SMIOL_context *contex
  * Detailed description.
  *
  ********************************************************************************/
-void SMIOL_async_launch_thread(pthread_t **thread, void *(*func)(void *))
+void SMIOL_async_launch_thread(pthread_t **thread, void *(*func)(void *), void *arg)
 {
 	int ierr;
 	pthread_attr_t attr;
@@ -209,7 +209,7 @@ void SMIOL_async_launch_thread(pthread_t **thread, void *(*func)(void *))
 		fprintf(stderr, "Error: pthread_attr_setdetachedstate: %i\n", ierr);
 	}
 
-	ierr = pthread_create(*thread, (const pthread_attr_t *)&attr, func, NULL);
+	ierr = pthread_create(*thread, (const pthread_attr_t *)&attr, func, arg);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_create: %i\n", ierr);
 	}
