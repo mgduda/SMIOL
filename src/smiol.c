@@ -1008,7 +1008,9 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		async->mpi_count = mpi_count;
 		async->buf = buf_p;
 
-		async_write((void *)async);
+		SMIOL_async_launch_thread(&(file->context->writer), async_write,
+		                          (void *)async);
+		SMIOL_async_join_thread(&(file->context->writer));
 		ierr = async->ierr;
 
 		free(async);
