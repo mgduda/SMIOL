@@ -63,6 +63,17 @@ struct SMIOL_decomp {
 #endif
 };
 
+struct SMIOL_async_buffer {
+	int ierr;
+	const void *buf;
+#ifdef SMIOL_PNETCDF
+	int ncidp;
+	int varidp;
+	MPI_Offset *mpi_start;
+	MPI_Offset *mpi_count;
+#endif
+};
+
 
 /*
  * Return error codes

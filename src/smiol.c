@@ -23,6 +23,8 @@ int build_start_count(struct SMIOL_file *file, const char *varname,
                       int write_or_read, size_t *element_size, int *ndims,
                       size_t **start, size_t **count);
 
+void *async_write(void *b);
+
 #ifdef SMIOL_AGGREGATION
 void smiol_aggregate_list(MPI_Comm comm, size_t n_in, SMIOL_Offset *in_list,
                           size_t *n_out, SMIOL_Offset **out_list,
@@ -919,6 +921,7 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		const void *buf_p;
 		MPI_Offset *mpi_start;
 		MPI_Offset *mpi_count;
+		struct SMIOL_async_buffer *async;
 
 		if (file->state == PNETCDF_DEFINE_MODE) {
 			if ((ierr = ncmpi_enddef(file->ncidp)) != NC_NOERR) {
@@ -978,11 +981,18 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 			mpi_count[j] = (MPI_Offset)count[j];
 		}
 
-		ierr = ncmpi_put_vara_all(file->ncidp,
-		                          varidp,
-		                          mpi_start, mpi_count,
-		                          buf_p,
-		                          0, MPI_DATATYPE_NULL);
+		async = malloc(sizeof(struct SMIOL_async_buffer));
+
+		async->ncidp = file->ncidp;
+		async->varidp = varidp;
+		async->mpi_start = mpi_start;
+		async->mpi_count = mpi_count;
+		async->buf = buf_p;
+
+		async_write((void *)async);
+		ierr = async->ierr;
+
+		free(async);
 
 		free(mpi_start);
 		free(mpi_count);
@@ -2069,6 +2079,38 @@ int build_start_count(struct SMIOL_file *file, const char *varname,
 	free(dimsizes);
 
 	return SMIOL_SUCCESS;
+}
+
+
+/********************************************************************************
+ *
+ * async_write
+ *
+ * Handles calls to file-level API to write a buffer to a file
+ *
+ * This function does not free any memory after the write has been attempted.
+ *
+ * This function returns the pointer to its argument. The ierr member of
+ * the argument will be set to 0 if the write was successful.
+ *
+ ********************************************************************************/
+void *async_write(void *b)
+{
+	struct SMIOL_async_buffer *async;
+
+	async = b;
+
+#ifdef SMIOL_PNETCDF
+	async->ierr = ncmpi_put_vara_all(async->ncidp,
+	                                 async->varidp,
+	                                 async->mpi_start, async->mpi_count,
+	                                 async->buf,
+	                                 0, MPI_DATATYPE_NULL);
+#else
+	async->ierr = 0;
+#endif
+
+	return b;
 }
 
 
