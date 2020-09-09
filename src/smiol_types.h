@@ -32,9 +32,9 @@ struct SMIOL_context {
 	 */
 	int active;
 
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_t *thread;
+	pthread_mutex_t *mutex;
+	pthread_cond_t *cond;
+	pthread_t *writer;
 
 	struct SMIOL_async_buffer *head;
 	struct SMIOL_async_buffer *tail;

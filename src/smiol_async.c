@@ -27,6 +27,12 @@ int SMIOL_async_init(struct SMIOL_context *context)
 
 
 	/*
+	 * Writer thread initialization
+	 */
+	context->writer = NULL;
+
+
+	/*
 	 * Status initialization
 	 */
 	context->active = 0;
@@ -35,13 +41,15 @@ int SMIOL_async_init(struct SMIOL_context *context)
 	/*
 	 * Mutex setup
 	 */
+	context->mutex = malloc(sizeof(pthread_mutex_t));
+
 	ierr = pthread_mutexattr_init(&mutexattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutexattr_init: %i\n", ierr);
 		return 1;
 	}
 
-	ierr = pthread_mutex_init(&(context->mutex), (const pthread_mutexattr_t *)&mutexattr);
+	ierr = pthread_mutex_init(context->mutex, (const pthread_mutexattr_t *)&mutexattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutex_init: %i\n", ierr);
 		return 1;
@@ -57,13 +65,15 @@ int SMIOL_async_init(struct SMIOL_context *context)
 	/*
 	 * Condition variable setup
 	 */
+	context->cond = malloc(sizeof(pthread_cond_t));
+
 	ierr = pthread_condattr_init(&condattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_condattr_init: %i\n", ierr);
 		return 1;
 	}
 
-	ierr = pthread_cond_init(&(context->cond), (const pthread_condattr_t *)&condattr);
+	ierr = pthread_cond_init(context->cond, (const pthread_condattr_t *)&condattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_cond_init: %i\n", ierr);
 		return 1;
@@ -101,17 +111,23 @@ int SMIOL_async_finalize(struct SMIOL_context *context)
 	 */
 	context->active = 0;
 
-	ierr = pthread_mutex_destroy(&(context->mutex));
+	ierr = pthread_mutex_destroy(context->mutex);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutex_destroy: %i\n", ierr);
 		return 1;
 	}
 
-	ierr = pthread_cond_destroy(&(context->cond));
+	free(context->mutex);
+	context->mutex = NULL;
+
+	ierr = pthread_cond_destroy(context->cond);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_cond_destroy: %i\n", ierr);
 		return 1;
 	}
+
+	free(context->cond);
+	context->cond = NULL;
 
 	return 0;
 }

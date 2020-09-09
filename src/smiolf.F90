@@ -49,6 +49,18 @@ module SMIOLf
 
         integer(c_int) :: lib_ierr   ! Library-specific error code
         integer(c_int) :: lib_type   ! From which library the error code originated
+
+        !
+        ! Asynchronous output
+        !
+        integer(c_int) :: active    ! TO DO: description
+
+        type (c_ptr) :: mutex       ! TO DO: description
+        type (c_ptr) :: cond        ! TO DO: description
+        type (c_ptr) :: writer      ! TO DO: description
+
+        type (c_ptr) :: head        ! TO DO: description
+        type (c_ptr) :: tail        ! TO DO: description
     end type SMIOLf_context
 
     type, bind(C) :: SMIOLf_file
