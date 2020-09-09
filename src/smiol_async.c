@@ -12,7 +12,7 @@
  * Detailed description.
  *
  ********************************************************************************/
-void SMIOL_async_init(struct SMIOL_context *context)
+int SMIOL_async_init(struct SMIOL_context *context)
 {
 	int ierr;
 	pthread_mutexattr_t mutexattr;
@@ -38,16 +38,19 @@ void SMIOL_async_init(struct SMIOL_context *context)
 	ierr = pthread_mutexattr_init(&mutexattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutexattr_init: %i\n", ierr);
+		return 1;
 	}
 
 	ierr = pthread_mutex_init(&(context->mutex), (const pthread_mutexattr_t *)&mutexattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutex_init: %i\n", ierr);
+		return 1;
 	}
 
 	ierr = pthread_mutexattr_destroy(&mutexattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutexattr_destroy: %i\n", ierr);
+		return 1;
 	}
 
 
@@ -57,17 +60,22 @@ void SMIOL_async_init(struct SMIOL_context *context)
 	ierr = pthread_condattr_init(&condattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_condattr_init: %i\n", ierr);
+		return 1;
 	}
 
 	ierr = pthread_cond_init(&(context->cond), (const pthread_condattr_t *)&condattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_cond_init: %i\n", ierr);
+		return 1;
 	}
 
 	ierr = pthread_condattr_destroy(&condattr);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_condattr_destroy: %i\n", ierr);
+		return 1;
 	}
+
+	return 0;
 }
 
 
@@ -80,7 +88,7 @@ void SMIOL_async_init(struct SMIOL_context *context)
  * Detailed description.
  *
  ********************************************************************************/
-void SMIOL_async_finalize(struct SMIOL_context *context)
+int SMIOL_async_finalize(struct SMIOL_context *context)
 {
 	int ierr;
 
@@ -96,12 +104,16 @@ void SMIOL_async_finalize(struct SMIOL_context *context)
 	ierr = pthread_mutex_destroy(&(context->mutex));
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutex_destroy: %i\n", ierr);
+		return 1;
 	}
 
 	ierr = pthread_cond_destroy(&(context->cond));
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_cond_destroy: %i\n", ierr);
+		return 1;
 	}
+
+	return 0;
 }
 
 

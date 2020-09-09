@@ -4,6 +4,7 @@
 #include <string.h>
 #include "smiol.h"
 #include "smiol_utils.h"
+#include "smiol_async.h"
 
 #ifdef SMIOL_PNETCDF
 #include "pnetcdf.h"
@@ -125,6 +126,15 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 		return SMIOL_MPI_ERROR;
 	}
 
+	/*
+	 * Prepare asynchronous output components of the context
+	 */
+	if (SMIOL_async_init(*context) != 0) {
+		free((*context));
+		(*context) = NULL;
+		return SMIOL_ASYNC_ERROR;
+	}
+
 	return SMIOL_SUCCESS;
 }
 
@@ -161,6 +171,15 @@ int SMIOL_finalize(struct SMIOL_context **context)
 		free((*context));
 		(*context) = NULL;
 		return SMIOL_MPI_ERROR;
+	}
+
+	/*
+	 * Finalize asynchronous output
+	 */
+	if (SMIOL_async_finalize(*context) != 0) {
+		free((*context));
+		(*context) = NULL;
+		return SMIOL_ASYNC_ERROR;
 	}
 
 	free((*context));
