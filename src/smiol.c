@@ -1002,11 +1002,13 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 
 		async = malloc(sizeof(struct SMIOL_async_buffer));
 
+		async->ierr = 0;
 		async->ncidp = file->ncidp;
 		async->varidp = varidp;
 		async->mpi_start = mpi_start;
 		async->mpi_count = mpi_count;
 		async->buf = buf_p;
+		async->next = NULL;
 
 		SMIOL_async_launch_thread(&(file->context->writer), async_write,
 		                          (void *)async);
