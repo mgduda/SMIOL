@@ -53,14 +53,8 @@ module SMIOLf
         !
         ! Asynchronous output
         !
-        integer(c_int) :: active    ! TO DO: description
-
         type (c_ptr) :: mutex       ! TO DO: description
         type (c_ptr) :: cond        ! TO DO: description
-        type (c_ptr) :: writer      ! TO DO: description
-
-        type (c_ptr) :: head        ! TO DO: description
-        type (c_ptr) :: tail        ! TO DO: description
     end type SMIOLf_context
 
     type, bind(C) :: SMIOLf_file
@@ -70,6 +64,13 @@ module SMIOLf
         integer(c_int) :: state      ! parallel-netCDF file state (i.e. Define or data mode)
         integer(c_int) :: ncidp      ! parallel-netCDF file handle
 #endif
+        !
+        ! Asynchronous output
+        !
+        integer(c_int) :: active    ! TO DO: description
+        type (c_ptr) :: writer      ! TO DO: description
+        type (c_ptr) :: head        ! TO DO: description
+        type (c_ptr) :: tail        ! TO DO: description
     end type SMIOLf_file
 
     type, bind(C) :: SMIOLf_decomp

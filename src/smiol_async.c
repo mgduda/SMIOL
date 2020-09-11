@@ -20,25 +20,6 @@ int SMIOL_async_init(struct SMIOL_context *context)
 
 
 	/*
-	 * Queue initialization
-	 */
-	context->head = NULL;
-	context->tail = NULL;
-
-
-	/*
-	 * Writer thread initialization
-	 */
-	context->writer = NULL;
-
-
-	/*
-	 * Status initialization
-	 */
-	context->active = 0;
-
-
-	/*
 	 * Mutex setup
 	 */
 	context->mutex = malloc(sizeof(pthread_mutex_t));
@@ -102,15 +83,6 @@ int SMIOL_async_finalize(struct SMIOL_context *context)
 {
 	int ierr;
 
-	/*
-	 * TO DO - flush the queue
-	 */
-
-	/*
-	 * TO DO - what if active == 1?
-	 */
-	context->active = 0;
-
 	ierr = pthread_mutex_destroy(context->mutex);
 	if (ierr) {
 		fprintf(stderr, "Error: pthread_mutex_destroy: %i\n", ierr);
@@ -142,14 +114,14 @@ int SMIOL_async_finalize(struct SMIOL_context *context)
  * Detailed description.
  *
  ********************************************************************************/
-void SMIOL_async_queue_add(struct SMIOL_context *context, struct SMIOL_async_buffer *b)
+void SMIOL_async_queue_add(struct SMIOL_file *file, struct SMIOL_async_buffer *b)
 {
-	if (!context->head && !context->tail) {
-		context->head = b;
-		context->tail = b;
-	} else if (context->head && context->tail) {
-		context->head->next = b;
-		context->head = b;
+	if (!file->head && !file->tail) {
+		file->head = b;
+		file->tail = b;
+	} else if (file->head && file->tail) {
+		file->head->next = b;
+		file->head = b;
 	} else {
 		fprintf(stderr, "List error: only one of head or tail was associated!\n");
 	}
@@ -165,17 +137,17 @@ void SMIOL_async_queue_add(struct SMIOL_context *context, struct SMIOL_async_buf
  * Detailed description.
  *
  ********************************************************************************/
-struct SMIOL_async_buffer *SMIOL_async_queue_remove(struct SMIOL_context *context)
+struct SMIOL_async_buffer *SMIOL_async_queue_remove(struct SMIOL_file *file)
 {
 	struct SMIOL_async_buffer *b;
 
-	if (!context->tail) {
+	if (!file->tail) {
 		b = NULL;
 	} else {
-		b = context->tail;
-		context->tail = context->tail->next;
-		if (!context->tail) {
-			context->head = NULL;
+		b = file->tail;
+		file->tail = file->tail->next;
+		if (!file->tail) {
+			file->head = NULL;
 		}
 	}
 

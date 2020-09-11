@@ -30,14 +30,8 @@ struct SMIOL_context {
 	/*
 	 * Asynchronous output
 	 */
-	int active;
-
 	pthread_mutex_t *mutex;
 	pthread_cond_t *cond;
-	pthread_t *writer;
-
-	struct SMIOL_async_buffer *head;
-	struct SMIOL_async_buffer *tail;
 };
 
 struct SMIOL_file {
@@ -47,6 +41,13 @@ struct SMIOL_file {
 	int state; /* parallel-netCDF file state (i.e. Define or data mode) */
 	int ncidp; /* parallel-netCDF file handle */
 #endif
+	/*
+	 * Asynchronous output
+	 */
+	int active;
+	pthread_t *writer;
+	struct SMIOL_async_buffer *head;
+	struct SMIOL_async_buffer *tail;
 };
 
 struct SMIOL_decomp {

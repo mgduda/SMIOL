@@ -300,6 +300,25 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
+
+	/*
+	 * Asynchronous queue initialization
+	 */
+	(*file)->head = NULL;
+	(*file)->tail = NULL;
+
+
+	/*
+	 * Asynchronous writer thread initialization
+	 */
+	(*file)->writer = NULL;
+
+
+	/*
+	 * Asynchronous status initialization
+	 */
+	(*file)->active = 0;
+
 	return SMIOL_SUCCESS;
 }
 
@@ -1010,9 +1029,9 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		async->buf = buf_p;
 		async->next = NULL;
 
-		SMIOL_async_launch_thread(&(file->context->writer), async_write,
+		SMIOL_async_launch_thread(&(file->writer), async_write,
 		                          (void *)async);
-		SMIOL_async_join_thread(&(file->context->writer));
+		SMIOL_async_join_thread(&(file->writer));
 		ierr = async->ierr;
 
 		free(async);
