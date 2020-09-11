@@ -69,7 +69,7 @@ cray:
 
 ifneq "$(PNETCDF)" ""
 CPPINCLUDES = -DSMIOL_PNETCDF -I${PNETCDF}/include -DSMIOL_AGGREGATION
-LIBS = -L${PNETCDF}/lib -lpnetcdf
+LIBS = -L${PNETCDF}/lib -lpnetcdf -lpthread
 endif
 
 smiol:
