@@ -350,6 +350,11 @@ int SMIOL_close_file(struct SMIOL_file **file)
 		return SMIOL_SUCCESS;
 	}
 
+	/*
+	 * Wait for asynchronous writer to finish
+	 */
+	SMIOL_async_join_thread(&((*file)->writer));
+
 #ifdef SMIOL_PNETCDF
 	if ((ierr = ncmpi_close((*file)->ncidp)) != NC_NOERR) {
 		((*file)->context)->lib_type = SMIOL_LIBRARY_PNETCDF;
@@ -1028,25 +1033,30 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		async->mpi_start = mpi_start;
 		async->mpi_count = mpi_count;
 		async->buf = buf_p;
+		if (decomp) {
+			async->must_free = 1;
+		} else {
+			async->must_free = 0;
+		}
 		async->next = NULL;
 
-		SMIOL_async_launch_thread(&(file->writer), async_write,
-		                          (void *)async);
-		SMIOL_async_join_thread(&(file->writer));
-		ierr = async->ierr;
-
-		free(async);
-
-		free(mpi_start);
-		free(mpi_count);
+		pthread_mutex_lock(file->mutex);
+		SMIOL_async_queue_add(file, async);
+		if (!file->active) {
+			SMIOL_async_join_thread(&(file->writer));
+			file->active = 1;
+			SMIOL_async_launch_thread(&(file->writer), async_write,
+			                          (void *)file);
+		}
+		pthread_mutex_unlock(file->mutex);
 
 		if (ierr != NC_NOERR) {
 			file->context->lib_type = SMIOL_LIBRARY_PNETCDF;
 			file->context->lib_ierr = ierr;
 
-			if (decomp) {
-				free(out_buf);
-			}
+//			if (decomp) {
+//				free(out_buf);
+//			}
 			free(start);
 			free(count);
 
@@ -1058,9 +1068,9 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 	/*
 	 * Free up memory before returning
 	 */
-	if (decomp) {
-		free(out_buf);
-	}
+//	if (decomp) {
+//		free(out_buf);
+//	}
 
 	free(start);
 	free(count);
@@ -2141,19 +2151,39 @@ int build_start_count(struct SMIOL_file *file, const char *varname,
  ********************************************************************************/
 void *async_write(void *b)
 {
+	struct SMIOL_file *file;
 	struct SMIOL_async_buffer *async;
 
-	async = b;
+	file = b;
 
+	while (file->active) {
+		pthread_mutex_lock(file->mutex);
+		async = SMIOL_async_queue_remove(file);
+		if (async == NULL) {
+			file->active = 0;
+		}
+		pthread_mutex_unlock(file->mutex);
+		if (async != NULL) {
 #ifdef SMIOL_PNETCDF
-	async->ierr = ncmpi_put_vara_all(async->ncidp,
-	                                 async->varidp,
-	                                 async->mpi_start, async->mpi_count,
-	                                 async->buf,
-	                                 0, MPI_DATATYPE_NULL);
+			/* TO DO: How do we communicate ierr back to main thread? */
+			async->ierr = ncmpi_put_vara_all(async->ncidp,
+			                                 async->varidp,
+			                                 async->mpi_start,
+			                                 async->mpi_count,
+			                                 async->buf,
+			                                 0, MPI_DATATYPE_NULL);
+
+			free(async->mpi_start);
+			free(async->mpi_count);
+			if (async->must_free) {
+				free(async->buf);
+			}
+			free(async);
 #else
-	async->ierr = 0;
+			async->ierr = 0;
 #endif
+		}
+	}
 
 	return b;
 }
