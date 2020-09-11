@@ -80,8 +80,7 @@ struct SMIOL_decomp {
 
 struct SMIOL_async_buffer {
 	int ierr;
-	const void *buf;
-	int must_free;
+	void *buf;
 #ifdef SMIOL_PNETCDF
 	int ncidp;
 	int varidp;

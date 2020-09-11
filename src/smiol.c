@@ -376,6 +376,12 @@ int SMIOL_close_file(struct SMIOL_file **file)
 
 
 	/*
+	 * Wait for asynchronous writer to finish
+	 */
+	SMIOL_async_join_thread(&((*file)->writer));
+
+
+	/*
 	 * Free mutex
 	 */
         ierr = pthread_mutex_destroy((*file)->mutex);
@@ -385,12 +391,6 @@ int SMIOL_close_file(struct SMIOL_file **file)
         }
 
         free((*file)->mutex);
-
-
-	/*
-	 * Wait for asynchronous writer to finish
-	 */
-	SMIOL_async_join_thread(&((*file)->writer));
 
 #ifdef SMIOL_PNETCDF
 	if ((ierr = ncmpi_close((*file)->ncidp)) != NC_NOERR) {
@@ -999,7 +999,7 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 	{
 		int j;
 		int varidp;
-		const void *buf_p;
+		void *buf_p;
 		MPI_Offset *mpi_start;
 		MPI_Offset *mpi_count;
 		struct SMIOL_async_buffer *async;
@@ -1037,7 +1037,16 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		if (decomp) {
 			buf_p = out_buf;
 		} else {
-			buf_p = buf;
+			size_t buf_size = 0;
+			int i;
+
+			for (i = 0; i < ndims; i++) {
+				buf_size *= count[i];
+			}
+			buf_size *= element_size;
+
+			buf_p = malloc(buf_size);
+			memcpy(buf_p, buf, buf_size);
 		}
 
 		mpi_start = malloc(sizeof(MPI_Offset) * (size_t)ndims);
@@ -1070,11 +1079,6 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		async->mpi_start = mpi_start;
 		async->mpi_count = mpi_count;
 		async->buf = buf_p;
-		if (decomp) {
-			async->must_free = 1;
-		} else {
-			async->must_free = 0;
-		}
 		async->next = NULL;
 
 		pthread_mutex_lock(file->mutex);
@@ -2217,9 +2221,7 @@ void *async_write(void *b)
 
 			free(async->mpi_start);
 			free(async->mpi_count);
-			if (async->must_free) {
-				free(async->buf);
-			}
+			free(async->buf);
 			free(async);
 #else
 			async->ierr = 0;
