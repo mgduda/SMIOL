@@ -304,6 +304,7 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	/*
 	 * Asynchronous queue initialization
 	 */
+	(*file)->mutex = NULL;
 	(*file)->head = NULL;
 	(*file)->tail = NULL;
 

@@ -69,6 +69,7 @@ module SMIOLf
         !
         integer(c_int) :: active    ! TO DO: description
         type (c_ptr) :: writer      ! TO DO: description
+        type (c_ptr) :: mutex       ! TO DO: description
         type (c_ptr) :: head        ! TO DO: description
         type (c_ptr) :: tail        ! TO DO: description
     end type SMIOLf_file
