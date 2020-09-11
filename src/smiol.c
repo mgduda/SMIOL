@@ -224,6 +224,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 #ifdef SMIOL_PNETCDF
 	int ierr;
 #endif
+        pthread_mutexattr_t mutexattr;
+
 
 	/*
 	 * Before dereferencing file below, ensure that the pointer
@@ -304,9 +306,33 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	/*
 	 * Asynchronous queue initialization
 	 */
-	(*file)->mutex = NULL;
 	(*file)->head = NULL;
 	(*file)->tail = NULL;
+
+
+        /*
+         * Mutex setup
+         */
+        (*file)->mutex = malloc(sizeof(pthread_mutex_t));
+
+        ierr = pthread_mutexattr_init(&mutexattr);
+        if (ierr) {
+                fprintf(stderr, "Error: pthread_mutexattr_init: %i\n", ierr);
+                return 1;
+        }
+
+        ierr = pthread_mutex_init((*file)->mutex, (const pthread_mutexattr_t *)&mutexattr);
+        if (ierr) {
+                fprintf(stderr, "Error: pthread_mutex_init: %i\n", ierr);
+                return 1;
+        }
+
+        ierr = pthread_mutexattr_destroy(&mutexattr);
+        if (ierr) {
+                fprintf(stderr, "Error: pthread_mutexattr_destroy: %i\n", ierr);
+                return 1;
+        }
+
 
 
 	/*
@@ -338,9 +364,7 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
  ********************************************************************************/
 int SMIOL_close_file(struct SMIOL_file **file)
 {
-#ifdef SMIOL_PNETCDF
 	int ierr;
-#endif
 
 	/*
 	 * If the pointer to the file pointer is NULL, assume we have nothing
@@ -349,6 +373,19 @@ int SMIOL_close_file(struct SMIOL_file **file)
 	if (file == NULL) {
 		return SMIOL_SUCCESS;
 	}
+
+
+	/*
+	 * Free mutex
+	 */
+        ierr = pthread_mutex_destroy((*file)->mutex);
+        if (ierr) {
+                fprintf(stderr, "Error: pthread_mutex_destroy: %i\n", ierr);
+		return SMIOL_LIBRARY_ERROR;
+        }
+
+        free((*file)->mutex);
+
 
 	/*
 	 * Wait for asynchronous writer to finish
