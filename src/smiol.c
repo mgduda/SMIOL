@@ -1612,6 +1612,11 @@ int SMIOL_sync_file(struct SMIOL_file *file)
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
+	/*
+	 * Wait for asynchronous writer to finish
+	 */
+	SMIOL_async_join_thread(&(file->writer));
+
 #ifdef SMIOL_PNETCDF
 	/*
 	 * If the file is in define mode then switch it into data mode
