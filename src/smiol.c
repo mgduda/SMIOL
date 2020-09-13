@@ -1808,6 +1808,8 @@ int SMIOL_create_decomp(struct SMIOL_context *context,
 	(*decomp)->n_compute_agg = n_compute_elements_agg;
 	(*decomp)->counts = counts;
 	(*decomp)->displs = displs;
+
+	free(compute_elements_agg);
 #endif
 
 	/*
@@ -1836,9 +1838,20 @@ int SMIOL_create_decomp(struct SMIOL_context *context,
  ********************************************************************************/
 int SMIOL_free_decomp(struct SMIOL_decomp **decomp)
 {
+#ifdef SMIOL_AGGREGATION
+	MPI_Comm comm;
+#endif
+
 	if ((*decomp) == NULL) {
 		return SMIOL_SUCCESS;
 	}
+
+#ifdef SMIOL_AGGREGATION
+	comm = MPI_Comm_f2c((*decomp)->agg_comm);
+	MPI_Comm_free(&comm);
+	free((*decomp)->counts);
+	free((*decomp)->displs);
+#endif
 
 	free((*decomp)->comp_list);
 	free((*decomp)->io_list);
