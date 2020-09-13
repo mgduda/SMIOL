@@ -720,6 +720,13 @@ int build_exchange(struct SMIOL_context *context,
 	(*decomp)->io_list = NULL;
 	(*decomp)->io_start = 0;
 	(*decomp)->io_count = 0;
+#ifdef SMIOL_AGGREGATION
+        (*decomp)->agg_comm = MPI_Comm_c2f(MPI_COMM_NULL);
+        (*decomp)->n_compute = 0;
+        (*decomp)->n_compute_agg = 0;
+        (*decomp)->counts = NULL;
+        (*decomp)->displs = NULL;
+#endif
 
 
 	/*
