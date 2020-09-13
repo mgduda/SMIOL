@@ -1848,7 +1848,9 @@ int SMIOL_free_decomp(struct SMIOL_decomp **decomp)
 
 #ifdef SMIOL_AGGREGATION
 	comm = MPI_Comm_f2c((*decomp)->agg_comm);
-	MPI_Comm_free(&comm);
+	if (comm != MPI_COMM_NULL) {
+		MPI_Comm_free(&comm);
+	}
 	free((*decomp)->counts);
 	free((*decomp)->displs);
 #endif
