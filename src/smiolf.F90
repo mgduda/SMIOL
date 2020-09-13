@@ -55,6 +55,11 @@ module SMIOLf
         !
         type (c_ptr) :: mutex       ! TO DO: description
         type (c_ptr) :: cond        ! TO DO: description
+
+        !
+        ! Checksum for verifying validity of contents of a SMIOLf_context
+        !
+        integer(c_int) :: checksum
     end type SMIOLf_context
 
     type, bind(C) :: SMIOLf_file
@@ -72,6 +77,11 @@ module SMIOLf
         type (c_ptr) :: mutex       ! TO DO: description
         type (c_ptr) :: head        ! TO DO: description
         type (c_ptr) :: tail        ! TO DO: description
+
+        !
+        ! Checksum for verifying validity of contents of a SMIOLf_file
+        !
+        integer(c_int) :: checksum
     end type SMIOLf_file
 
     type, bind(C) :: SMIOLf_decomp

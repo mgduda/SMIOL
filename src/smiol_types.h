@@ -32,6 +32,11 @@ struct SMIOL_context {
 	 */
 	pthread_mutex_t *mutex;
 	pthread_cond_t *cond;
+
+	/*
+	 * Checksum for verifying validity of contents of a SMIOL_context struct
+	 */
+	int checksum;
 };
 
 struct SMIOL_file {
@@ -49,6 +54,11 @@ struct SMIOL_file {
 	pthread_mutex_t *mutex;
 	struct SMIOL_async_buffer *head;
 	struct SMIOL_async_buffer *tail;
+
+	/*
+	 * Checksum for verifying validity of contents of a SMIOL_file struct
+	 */
+	int checksum;
 };
 
 struct SMIOL_decomp {

@@ -103,6 +103,7 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 	 */
 	(*context)->lib_ierr = 0;
 	(*context)->lib_type = SMIOL_LIBRARY_UNKNOWN;
+	(*context)->checksum = 0;
 
 	/*
 	 * Make a duplicate of the MPI communicator for use by SMIOL
@@ -135,6 +136,11 @@ int SMIOL_init(MPI_Comm comm, struct SMIOL_context **context)
 		return SMIOL_ASYNC_ERROR;
 	}
 
+	/*
+	 * Set checksum for the SMIOL_context
+	 */
+	(*context)->checksum = 42424242;  /* TO DO - compute a real checksum here... */
+
 	return SMIOL_SUCCESS;
 }
 
@@ -164,6 +170,13 @@ int SMIOL_finalize(struct SMIOL_context **context)
 
 	if ((*context) == NULL) {
 		return SMIOL_SUCCESS;
+	}
+
+	/*
+	 * Verify validity through checksum
+	 */
+	if ((*context)->checksum != 42424242) {
+		return SMIOL_INVALID_ARGUMENT;
 	}
 
 	smiol_comm = MPI_Comm_f2c((*context)->fcomm);
@@ -346,6 +359,11 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	 */
 	(*file)->active = 0;
 
+	/*
+	 * Set checksum for the SMIOL_file
+	 */
+	(*file)->checksum = 42424242;  /* TO DO - compute a real checksum here... */
+
 	return SMIOL_SUCCESS;
 }
 
@@ -372,6 +390,14 @@ int SMIOL_close_file(struct SMIOL_file **file)
 	 */
 	if (file == NULL) {
 		return SMIOL_SUCCESS;
+	}
+
+
+	/*
+	 * Verify validity through checksum
+	 */
+	if ((*file)->checksum != 42424242) {
+		return SMIOL_INVALID_ARGUMENT;
 	}
 
 
@@ -1615,6 +1641,11 @@ int SMIOL_sync_file(struct SMIOL_file *file)
 	if (file == NULL) {
 		return SMIOL_INVALID_ARGUMENT;
 	}
+
+	if (file->checksum == 42424242) {
+		return SMIOL_INVALID_ARGUMENT;
+	}
+
 
 	/*
 	 * Wait for asynchronous writer to finish
