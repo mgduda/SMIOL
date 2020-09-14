@@ -1063,13 +1063,7 @@ int SMIOL_put_var(struct SMIOL_file *file, const char *varname,
 		if (decomp) {
 			buf_p = out_buf;
 		} else {
-			size_t buf_size = 0;
-			int i;
-
-			for (i = 0; i < ndims; i++) {
-				buf_size *= count[i];
-			}
-			buf_size *= element_size;
+			size_t buf_size = element_size;
 
 			buf_p = malloc(buf_size);
 			memcpy(buf_p, buf, buf_size);
@@ -1232,6 +1226,11 @@ int SMIOL_get_var(struct SMIOL_file *file, const char *varname,
 		
 #endif
 	}
+
+	/*
+	 * Wait for asynchronous writer to finish
+	 */
+	SMIOL_async_join_thread(&(file->writer));
 
 	/*
 	 * Read in_buf
@@ -1642,7 +1641,7 @@ int SMIOL_sync_file(struct SMIOL_file *file)
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
-	if (file->checksum == 42424242) {
+	if (file->checksum != 42424242) {
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
@@ -2122,26 +2121,21 @@ int build_start_count(struct SMIOL_file *file, const char *varname,
 	free(dimnames);
 
 	/*
-	 * Set basic size of each element in the field; only necessary if
-	 * the field is decomposed and therefore must be transferred prior to
-	 * writing
+	 * Set basic size of each element in the field
 	 */
-	*element_size = 1;
-	if (decomp) {
-		switch (vartype) {
-			case SMIOL_REAL32:
-				*element_size = sizeof(float);
-				break;
-			case SMIOL_REAL64:
-				*element_size = sizeof(double);
-				break;
-			case SMIOL_INT32:
-				*element_size = sizeof(int);
-				break;
-			case SMIOL_CHAR:
-				*element_size = sizeof(char);
-				break;
-		}
+	switch (vartype) {
+		case SMIOL_REAL32:
+			*element_size = sizeof(float);
+			break;
+		case SMIOL_REAL64:
+			*element_size = sizeof(double);
+			break;
+		case SMIOL_INT32:
+			*element_size = sizeof(int);
+			break;
+		case SMIOL_CHAR:
+			*element_size = sizeof(char);
+			break;
 	}
 
 	*start = malloc(sizeof(size_t) * (size_t)(*ndims));
