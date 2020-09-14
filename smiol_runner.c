@@ -118,9 +118,15 @@ int main(int argc, char **argv)
 	FILE *test_log = NULL;
 	char **dimnames;
 	float *buf;
+	int provided;
 
-	if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
-		fprintf(stderr, "Error: MPI_Init failed.\n");
+	if (MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided) != MPI_SUCCESS) {
+		fprintf(stderr, "Error: MPI_Init_thread failed.\n");
+		return 1;
+	}
+
+	if (provided != MPI_THREAD_MULTIPLE) {
+		fprintf(stderr, "MPI implementation does not provide MPI_THREAD_MULTIPLE.\n");
 		return 1;
 	}
 

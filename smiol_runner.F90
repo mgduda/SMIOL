@@ -25,10 +25,17 @@ program smiol_runner
     integer :: ndims
     character(len=32) :: tempstr
     real(kind=c_float), dimension(:), pointer :: real32_buf
+    integer :: provided
 
-    call MPI_Init(ierr)
+
+    call MPI_Init_thread(MPI_THREAD_MULTIPLE, provided, ierr)
     if (ierr /= MPI_SUCCESS) then
-        write(0,'(a)') 'Error: MPI_Init failed'
+        write(0,'(a)') 'Error: MPI_Init_thread failed'
+        stop 1
+    end if
+
+    if (provided /= MPI_THREAD_MULTIPLE) then
+        write(0,'(a)') 'MPI implementation does not provide MPI_THREAD_MULTIPLE.'
         stop 1
     end if
 
