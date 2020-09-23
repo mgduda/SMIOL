@@ -202,6 +202,9 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 {
 #ifdef SMIOL_PNETCDF
 	int ierr;
+	int io_group;
+	MPI_Comm io_file_comm;
+	MPI_Comm io_group_comm;
 #endif
 
 	/*
@@ -230,6 +233,14 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	(*file)->context = context;
 	(*file)->frame = (SMIOL_Offset) 0;
 
+	(*file)->io_task = (context->comm_rank % context->io_stride == 0) ? 1 : 0;
+	ierr = MPI_Comm_split(MPI_Comm_f2c(context->fcomm), (*file)->io_task, context->comm_rank, &io_file_comm);
+	(*file)->io_file_comm = MPI_Comm_c2f(io_file_comm);
+
+	io_group = context->comm_rank / context->io_stride;
+	ierr = MPI_Comm_split(MPI_Comm_f2c(context->fcomm), io_group, context->comm_rank, &io_group_comm);
+	(*file)->io_group_comm = MPI_Comm_c2f(io_group_comm);
+
 	if (mode & SMIOL_FILE_CREATE) {
 #ifdef SMIOL_PNETCDF
 		if ((ierr = ncmpi_create(MPI_Comm_f2c(context->fcomm), filename,
@@ -237,6 +248,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 					&((*file)->ncidp))) != NC_NOERR) {
 			free((*file));
 			(*file) = NULL;
+			MPI_Comm_free(&io_file_comm);
+			MPI_Comm_free(&io_group_comm);
 			context->lib_type = SMIOL_LIBRARY_PNETCDF;
 			context->lib_ierr = ierr;
 			return SMIOL_LIBRARY_ERROR;
@@ -251,6 +264,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 				NC_WRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
 			free((*file));
 			(*file) = NULL;
+			MPI_Comm_free(&io_file_comm);
+			MPI_Comm_free(&io_group_comm);
 			context->lib_type = SMIOL_LIBRARY_PNETCDF;
 			context->lib_ierr = ierr;
 			return SMIOL_LIBRARY_ERROR;
@@ -265,6 +280,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 				NC_NOWRITE, MPI_INFO_NULL, &((*file)->ncidp))) != NC_NOERR) {
 			free((*file));
 			(*file) = NULL;
+			MPI_Comm_free(&io_file_comm);
+			MPI_Comm_free(&io_group_comm);
 			context->lib_type = SMIOL_LIBRARY_PNETCDF;
 			context->lib_ierr = ierr;
 			return SMIOL_LIBRARY_ERROR;
@@ -276,6 +293,8 @@ int SMIOL_open_file(struct SMIOL_context *context, const char *filename, int mod
 	else {
 		free((*file));
 		(*file) = NULL;
+		MPI_Comm_free(&io_file_comm);
+		MPI_Comm_free(&io_group_comm);
 		return SMIOL_INVALID_ARGUMENT;
 	}
 
@@ -299,6 +318,8 @@ int SMIOL_close_file(struct SMIOL_file **file)
 {
 #ifdef SMIOL_PNETCDF
 	int ierr;
+	MPI_Comm io_file_comm;
+	MPI_Comm io_group_comm;
 #endif
 
 	/*
@@ -316,6 +337,20 @@ int SMIOL_close_file(struct SMIOL_file **file)
 		free((*file));
 		(*file) = NULL;
 		return SMIOL_LIBRARY_ERROR;
+	}
+
+	io_file_comm = MPI_Comm_f2c((*file)->io_file_comm);
+	if (MPI_Comm_free(&io_file_comm) != MPI_SUCCESS) {
+		free((*file));
+		(*file) = NULL;
+		return SMIOL_MPI_ERROR;
+	}
+
+	io_group_comm = MPI_Comm_f2c((*file)->io_group_comm);
+	if (MPI_Comm_free(&io_group_comm) != MPI_SUCCESS) {
+		free((*file));
+		(*file) = NULL;
+		return SMIOL_MPI_ERROR;
 	}
 #endif
 

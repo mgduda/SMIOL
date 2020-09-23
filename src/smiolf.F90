@@ -62,6 +62,9 @@ module SMIOLf
 #ifdef SMIOL_PNETCDF
         integer(c_int) :: state      ! parallel-netCDF file state (i.e. Define or data mode)
         integer(c_int) :: ncidp      ! parallel-netCDF file handle
+        integer(c_int) :: io_task    ! 1 = this task performs I/O calls; 0 = no I/O calls on this task
+        integer(c_int) :: io_file_comm
+        integer(c_int) :: io_group_comm
 #endif
     end type SMIOLf_file
 
